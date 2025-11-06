@@ -1,0 +1,2895 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS:GO Combat Simulation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f1419;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #top-nav {
+            height: 50px;
+            background: #1a1f2e;
+            border-bottom: 1px solid #2a2f3e;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 30px;
+        }
+
+        #brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-right: 30px;
+            padding-right: 30px;
+            border-right: 1px solid #2a2f3e;
+        }
+
+        #brand-logo img {
+            height: 32px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        #brand-text {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        #brand-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            letter-spacing: 0.5px;
+        }
+
+        #brand-tagline {
+            font-size: 10px;
+            color: #8a8fa5;
+            font-style: italic;
+        }
+
+        .nav-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            color: #8a8fa5;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+
+        .nav-item:hover {
+            color: #fff;
+        }
+
+        .nav-item.active {
+            color: #4a90e2;
+            border-bottom: 2px solid #4a90e2;
+        }
+
+        #container {
+            display: flex;
+            height: calc(100vh - 50px);
+        }
+
+        #sidebar {
+            width: 350px;
+            background: #1a1f2e;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #2a2f3e;
+        }
+
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            background: #0a0e15;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        #bottom-panel {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 300px;
+            background: rgba(26, 31, 46, 0.98);
+            border-top: 1px solid #2a2f3e;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* drag handle to resize bottom panel */
+        #resize-handle {
+            height: 6px;
+            cursor: ns-resize;
+            background: linear-gradient(180deg, #2a2f3e, #1a1f2e);
+        }
+        #resize-handle:hover {
+            background: linear-gradient(180deg, #3a3f4e, #1f2738);
+        }
+
+        #controls {
+            padding: 15px 20px;
+            border-bottom: 1px solid #2a2f3e;
+        }
+
+        #event-tabs {
+            display: flex;
+            gap: 10px;
+            padding: 10px 20px;
+            border-bottom: 1px solid #2a2f3e;
+            background: #1a1f2e;
+        }
+
+        .tab-btn {
+            padding: 8px 16px;
+            background: transparent;
+            border: none;
+            color: #8a8fa5;
+            cursor: pointer;
+            font-size: 13px;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            color: #fff;
+        }
+
+        .tab-btn.active {
+            color: #4a90e2;
+            border-bottom-color: #4a90e2;
+        }
+
+        #event-log {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+        }
+
+        .event-item {
+            padding: 6px 8px;
+            margin-bottom: 4px;
+            background: #2a2f3e;
+            border-radius: 3px;
+            color: #8a8fa5;
+            border-left: 3px solid transparent;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .event-item:hover {
+            background: #3a3f4e;
+        }
+
+        .event-item.selected {
+            background: #4a4f5e;
+            border-left-color: #4a90e2;
+        }
+
+        .event-item.kill {
+            border-left-color: #ff6b6b;
+        }
+
+        .event-item.attack {
+            border-left-color: #ffa500;
+        }
+
+        .event-item.hit {
+            border-left-color: #4a90e2;
+        }
+
+        .event-time {
+            color: #6b9bd5;
+            font-weight: 600;
+        }
+
+        .event-player {
+            color: #4a90e2;
+            font-weight: 500;
+        }
+
+        .event-victim {
+            color: #ff6b6b;
+            font-weight: 500;
+        }
+
+        .event-action {
+            color: #8a8fa5;
+        }
+
+        .event-weapon {
+            color: #ffa500;
+            font-style: italic;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .play-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #4a90e2;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .play-btn:hover {
+            background: #5aa0f2;
+        }
+
+        .timeline {
+            flex: 1;
+            height: 6px;
+            background: #2a2f3e;
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .timeline-progress {
+            height: 100%;
+            background: #4a90e2;
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.1s;
+        }
+
+        .time-display {
+            min-width: 100px;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .speed-btn {
+            padding: 5px 10px;
+            background: #2a2f3e;
+            border: 1px solid #3a3f4e;
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .speed-btn.active {
+            background: #4a90e2;
+            border-color: #4a90e2;
+        }
+
+        .sidebar-section {
+            margin-bottom: 25px;
+        }
+
+        .sidebar-section h3 {
+            font-size: 12px;
+            color: #8a8fa5;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #2a2f3e;
+            font-size: 12px;
+        }
+
+        .stat-label {
+            color: #8a8fa5;
+        }
+
+        .stat-value {
+            color: #fff;
+            font-weight: 500;
+        }
+
+        .stat-group {
+            margin-bottom: 15px;
+        }
+
+        .stat-group-title {
+            font-size: 11px;
+            color: #6a6f85;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        #file-input {
+            margin-bottom: 20px;
+            padding: 12px;
+            background: #2a2f3e;
+            border-radius: 6px;
+            border: 1px solid #3a3f4e;
+        }
+
+        #file-input input[type="file"] {
+            color: white;
+            font-size: 12px;
+        }
+
+        #loading {
+            text-align: center;
+            padding: 20px;
+            color: #8a8fa5;
+            font-size: 14px;
+        }
+
+        .player-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            background: #2a2f3e;
+            border-radius: 4px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .player-item.ct {
+            border-left: 3px solid #5b9bd5;
+        }
+
+        .player-item.terrorist {
+            border-left: 3px solid #ff6b6b;
+        }
+
+        .player-kd {
+            font-size: 11px;
+            color: #8a8fa5;
+        }
+
+        #map-info {
+            background: #2a2f3e;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        #map-info-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        #map-bounds {
+            font-size: 11px;
+            color: #8a8fa5;
+            font-family: 'Courier New', monospace;
+        }
+
+        #focus-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(26, 31, 46, 0.95);
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+            z-index: 100;
+        }
+
+        #focus-controls.show {
+            display: block;
+        }
+
+        #focus-controls button {
+            padding: 8px 16px;
+            background: #4a90e2;
+            border: none;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        #focus-controls button:hover {
+            background: #5aa0f2;
+        }
+
+        #focus-info {
+            font-size: 12px;
+            color: #8a8fa5;
+            margin-bottom: 10px;
+        }
+
+        /* Kill event picker (top-left of canvas) */
+        #event-picker {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(26, 31, 46, 0.95);
+            border: 1px solid #2a2f3e;
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            z-index: 120;
+        }
+
+        #event-picker select, #event-picker button {
+            background: #2a2f3e;
+            border: 1px solid #3a3f4e;
+            color: #fff;
+            border-radius: 4px;
+            padding: 6px 8px;
+            font-size: 12px;
+        }
+
+        #event-picker button.primary {
+            background: #4a90e2;
+            border-color: #4a90e2;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="top-nav">
+        <div id="brand-logo">
+            <img id="brand-image" src="crumb_logo.png" alt="CRUMB Logo" onerror="this.style.display='none'">
+            <div id="brand-text">
+                <div id="brand-name">CRUMB — Combat Replay Unified Monitoring & Behavior-analysis</div>
+                <div id="brand-tagline">"Follow every trace." 🍞</div>
+            </div>
+        </div>
+        <div class="nav-item">Dashboard</div>
+        <div class="nav-item">Manage</div>
+        <div class="nav-item active">Investigate</div>
+        <div class="nav-item" id="report-tab">Generate Report</div>
+    </div>
+
+    <div id="container">
+        <div id="sidebar">
+            <div class="sidebar-section">
+                <h3>File Load</h3>
+                <div id="file-input">
+                    <input type="file" id="csv-file" accept=".csv" />
+                    <div id="loading" style="display: none;">CSV 파일 처리 중...</div>
+                </div>
+            </div>
+
+            
+
+            <div class="sidebar-section">
+                <h3>Statistics</h3>
+                
+                <div class="stat-group">
+                    <div class="stat-group-title">Title</div>
+                    <div class="stat-item">
+                        <span class="stat-label">Name:</span>
+                        <span class="stat-value" id="game-name">CS2</span>
+                    </div>
+                </div>
+
+                <div class="stat-group">
+                    <div class="stat-group-title">Game</div>
+                    <div class="stat-item">
+                        <span class="stat-label">Server:</span>
+                        <span class="stat-value">Valve-Counter-Strike</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Game Mode:</span>
+                        <span class="stat-value">SourceTV-Demo</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Start time:</span>
+                        <span class="stat-value" id="start-time">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Length:</span>
+                        <span class="stat-value" id="game-length">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Players:</span>
+                        <span class="stat-value" id="total-players">-</span>
+                    </div>
+                </div>
+
+                <div class="stat-group">
+                    <div class="stat-group-title">Match</div>
+                    <div class="stat-item">
+                        <span class="stat-label">Match Start Time:</span>
+                        <span class="stat-value" id="match-start-time">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Match Length:</span>
+                        <span class="stat-value" id="match-length">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Match Mode:</span>
+                        <span class="stat-value">5v5</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Map Name:</span>
+                        <span class="stat-value" id="map-name">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Total Events:</span>
+                        <span class="stat-value" id="total-events">-</span>
+                    </div>
+                </div>
+
+                <div id="map-info">
+                    <div id="map-info-title">Map Bounds</div>
+                    <div id="map-bounds">Calculating...</div>
+                    <div style="margin-top: 10px; padding: 10px; background: #1a1f2e; border-radius: 4px; font-size: 11px; color: #8a8fa5;">
+                        <div style="margin-bottom: 5px;"><strong>맵 렌더링 정보:</strong></div>
+                        <div>현재 맵: Anubis (데이터 기반)</div>
+                        <div style="margin-top: 5px;">맵 지오메트리 데이터는 CS2 게임 파일(.bsp)에서 추출하거나</div>
+                        <div>외부 맵 데이터 API를 사용해야 합니다.</div>
+                        <div style="margin-top: 5px; color: #4a90e2;">참고: 현재는 플레이어 위치 기반 경계만 표시됩니다.</div>
+                    </div>
+                </div>
+
+                <div class="stat-group">
+                    <div class="stat-group-title">Players (K/D Ratio)</div>
+                    <div style="font-size: 10px; color: #6a6f85; margin-bottom: 8px; font-style: italic;">
+                        K/D: Kills / Deaths - Click to filter
+                    </div>
+                    <div id="player-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="canvas-container">
+            <canvas id="canvas"></canvas>
+            <div id="event-picker">
+                <select id="kill-select">
+                    <option value="">Kill events will appear here</option>
+                </select>
+                <button id="go-kill" class="primary">Go</button>
+                <button id="reset-view">Reset View</button>
+
+                <span style="width:12px"></span>
+                <select id="player-select">
+                    <option value="">Players</option>
+                </select>
+                <button id="prev-player-tick">Prev</button>
+                <button id="next-player-tick">Next</button>
+                <button id="follow-toggle">Follow</button>
+            </div>
+            <div id="focus-controls">
+                <div id="focus-info">Focus Mode: Event selected</div>
+                <button id="exit-focus-btn">Exit Focus Mode</button>
+            </div>
+        </div>
+    </div>
+
+    
+
+    <div id="bottom-panel">
+        <div id="resize-handle" title="Drag to resize"></div>
+        <div id="controls">
+            <div class="control-group">
+                <button class="play-btn" id="play-btn">▶</button>
+                <div class="timeline" id="timeline">
+                    <div class="timeline-progress" id="timeline-progress"></div>
+                </div>
+                <div class="time-display" id="time-display">00:00 / 00:00</div>
+                <div class="speed-control">
+                    <button class="speed-btn" data-speed="0.5">0.5x</button>
+                    <button class="speed-btn active" data-speed="1">1x</button>
+                    <button class="speed-btn" data-speed="2">2x</button>
+                    <button class="speed-btn" data-speed="3">3x</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="event-tabs">
+            <button class="tab-btn active" data-tab="actions">Action Stream</button>
+            <button class="tab-btn" data-tab="chat">Match Chat</button>
+            <button class="tab-btn" data-tab="aim">Aim Trace</button>
+        </div>
+
+        <div id="event-log"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script>
+        class CombatSimulation {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                
+                this.data = null;
+                this.currentTick = 0;
+                this.isPlaying = false;
+                this.playSpeed = 1;
+                
+                this.playerObjects = new Map();
+                this.playerLabels = new Map();
+                this.playerTrails = new Map();
+                this.eventMarkers = [];
+                this.mapBounds = null;
+                this.selectedEvent = null;
+                this.focusMode = false;
+                this.focusTimeRange = null;
+                this.focusTickRange = null;
+                this.baseCameraDistance = 1500;
+                this.cameraRotationX = 0.3;
+                this.cameraRotationY = 0;
+                this.cameraDistance = 1500;
+                this.killLabels = new Map(); // 킬 라벨 추적 (페이드아웃용)
+                this.playerIndex = new Map(); // name -> [{tick, pos}]
+                this.selectedPlayer = null;
+                this.followPlayer = false;
+                
+                this.init();
+            }
+
+            init() {
+                this.setupScene();
+                this.setupControls();
+                this.setupFileInput();
+                this.setupTabs();
+                this.setupResizableBottom();
+                this.animate();
+            }
+
+            setupFileInput() {
+                const inputEl = document.getElementById('csv-file');
+                if (!inputEl) {
+                    console.error('파일 입력 요소(#csv-file)를 찾을 수 없습니다.');
+                    return;
+                }
+                // 같은 파일을 연속 선택할 때 change 이벤트가 안 뜨는 문제 방지
+                inputEl.addEventListener('click', () => {
+                    inputEl.value = '';
+                });
+                inputEl.addEventListener('change', (e) => {
+                    const file = e.target.files && e.target.files[0];
+                    const loading = document.getElementById('loading');
+                    if (loading) {
+                        loading.style.display = 'block';
+                        loading.innerHTML = 'Parsing CSV file...';
+                    }
+                    if (file) {
+                        console.log('CSV 파일 선택됨:', file.name, file.size, 'bytes');
+                        this.loadCSV(file);
+                    } else {
+                        console.warn('선택된 파일이 없습니다.');
+                        if (loading) loading.style.display = 'none';
+                    }
+                });
+            }
+
+            setupTabs() {
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        // 탭 전환
+                        const tab = btn.getAttribute('data-tab');
+                        if (tab === 'aim') {
+                            this.renderAimTrace();
+                        } else if (tab === 'actions') {
+                            this.updateEventLog();
+                        } else {
+                            // chat placeholder
+                            const eventLog = document.getElementById('event-log');
+                            eventLog.innerHTML = '<div style="padding:10px;color:#8a8fa5;">Chat view TBD</div>';
+                        }
+                    });
+                });
+
+                // 포커스 모드 종료 버튼
+                document.getElementById('exit-focus-btn').addEventListener('click', () => {
+                    this.exitFocusMode();
+                });
+                
+                // 보고서 생성 탭
+                document.getElementById('report-tab').addEventListener('click', () => {
+                    const playerName = this.selectedPlayer || (this.selectedEvent && this.selectedEvent.attacker && this.selectedEvent.attacker.name) || 
+                                    ((this.data && this.data.metadata && this.data.metadata.players && this.data.metadata.players[0]) || null);
+                    if (playerName) {
+                        this.generateReport(playerName);
+                    } else {
+                        alert('Please select a player first');
+                    }
+                });
+            }
+
+            async loadCSV(file) {
+                const loading = document.getElementById('loading');
+                if (loading) {
+                    loading.style.display = 'block';
+                    loading.innerHTML = 'Parsing CSV file...';
+                }
+                
+                return new Promise((resolve) => {
+                    try {
+                        // PapaParse 로드 확인
+                        if (typeof Papa === 'undefined' || !Papa || !Papa.parse) {
+                            console.error('PapaParse가 로드되지 않았습니다.');
+                            if (loading) loading.innerHTML = 'Error: CSV parser not loaded. 네트워크를 확인하고 새로고침(Ctrl+F5) 해주세요.';
+                            resolve();
+                            return;
+                        }
+                        Papa.parse(file, {
+                            header: true,
+                            skipEmptyLines: true,
+                            complete: async (results) => {
+                                console.log('CSV 파싱 완료:', results.data.length, '줄');
+                                console.log('첫 번째 행 샘플:', results.data[0]);
+                                
+                                if (!results || !results.data || results.data.length === 0) {
+                                    console.error('CSV 파싱 결과가 비어있습니다');
+                                    alert('CSV 파일에 데이터가 없습니다.');
+                                    if (loading) loading.style.display = 'none';
+                                    resolve();
+                                    return;
+                                }
+                                
+                                if (loading) loading.innerHTML = 'Processing data... 0%';
+                                try {
+                                    await this.processData(results.data);
+                                } catch (procError) {
+                                    console.error('processData 오류:', procError);
+                                    alert('데이터 처리 중 오류: ' + procError.message);
+                                }
+                                if (loading) loading.style.display = 'none';
+                                resolve();
+                            },
+                            error: (error) => {
+                                console.error('CSV 파싱 오류:', error);
+                                if (loading) loading.style.display = 'none';
+                                alert('CSV 파일을 읽는 중 오류가 발생했습니다: ' + error.message);
+                                resolve();
+                            }
+                        });
+                    } catch (error) {
+                        console.error('loadCSV 오류:', error);
+                        if (loading) loading.style.display = 'none';
+                        alert('파일 로드 중 오류가 발생했습니다: ' + error.message);
+                        resolve();
+                    }
+                });
+            }
+
+            async processData(rows) {
+                try {
+                    console.log('processData 시작, 총 행 수:', rows.length);
+                    if (!rows || rows.length === 0) {
+                        console.error('데이터가 비어있습니다');
+                        alert('CSV 파일에 데이터가 없습니다.');
+                        return;
+                    }
+                    
+                    const positions = [];
+                    const events = [];
+                    const aimIndex = new Map(); // name -> [{yaw,pitch,time,type}]
+                    
+                    // 맵 경계 추적용 (별도 배열 없이 직접 계산)
+                    let minX = Infinity, maxX = -Infinity;
+                    let minY = Infinity, maxY = -Infinity;
+                    let minZ = Infinity, maxZ = -Infinity;
+                    
+                    let tickData = {};
+                    let currentTick = null;
+                    
+                    const totalRows = rows.length;
+                    const chunkSize = 1000; // 청크 단위로 처리하여 UI 차단 방지
+                    
+                    // 진행 상황 표시
+                    const loading = document.getElementById('loading');
+                    const updateProgress = (progress) => {
+                        if (loading) {
+                            loading.style.display = 'block';
+                            loading.innerHTML = 'Processing data... ' + Math.round(progress) + '%';
+                        }
+                    };
+                    
+                    // 청크 단위 처리
+                    for (let chunkStart = 0; chunkStart < totalRows; chunkStart += chunkSize) {
+                        const chunkEnd = Math.min(chunkStart + chunkSize, totalRows);
+                        const chunk = rows.slice(chunkStart, chunkEnd);
+                        
+                        chunk.forEach((row, localIdx) => {
+                        const idx = chunkStart + localIdx;
+                        
+                        const tickStr = row.tick && row.tick.trim ? row.tick.trim() : null;
+                        if (!tickStr) return;
+                        
+                        const tick = parseInt(tickStr);
+                        const gameTime = parseFloat(row.game_time || 0);
+                        
+                        if (currentTick !== tick && currentTick !== null && tickData.players && tickData.players.length) {
+                            positions.push({
+                                tick: currentTick,
+                                game_time: tickData.game_time || 0,
+                                players: tickData.players || []
+                            });
+                            tickData = { players: [] };
+                        }
+                        
+                        currentTick = tick;
+                        tickData.game_time = gameTime;
+                        
+                        const x = row.X && row.X.trim ? row.X.trim() : null;
+                        const y = row.Y && row.Y.trim ? row.Y.trim() : null;
+                        const z = row.Z && row.Z.trim ? row.Z.trim() : null;
+                        if (x && y && z && row.name && row.name.trim && row.name.trim()) {
+                            const posX = parseFloat(x);
+                            const posY = parseFloat(y);
+                            const posZ = parseFloat(z);
+                            
+                            // 맵 경계 직접 업데이트 (배열 저장 불필요)
+                            if (!Number.isNaN(posX)) {
+                                if (posX < minX) minX = posX;
+                                if (posX > maxX) maxX = posX;
+                            }
+                            if (!Number.isNaN(posY)) {
+                                if (posY < minY) minY = posY;
+                                if (posY > maxY) maxY = posY;
+                            }
+                            if (!Number.isNaN(posZ)) {
+                                if (posZ < minZ) minZ = posZ;
+                                if (posZ > maxZ) maxZ = posZ;
+                            }
+                            
+                            tickData.players = tickData.players || [];
+                            // yaw, pitch 정보도 수집 (플레이어 데이터에) - 새 데이터는 각 틱별로 모든 플레이어의 yaw/pitch가 있음
+                            const yawStr = row.yaw && row.yaw.trim ? row.yaw.trim() : null;
+                            const pitchStr = row.pitch && row.pitch.trim ? row.pitch.trim() : null;
+                            // attacker_yaw/pitch는 fallback으로만 사용 (킬 이벤트 시)
+                            const yaw = yawStr ? parseFloat(yawStr) : (row.attacker_yaw && row.attacker_yaw.trim ? parseFloat(row.attacker_yaw.trim()) : null);
+                            const pitch = pitchStr ? parseFloat(pitchStr) : (row.attacker_pitch && row.attacker_pitch.trim ? parseFloat(row.attacker_pitch.trim()) : null);
+                            
+                            tickData.players.push({
+                                name: row.name.trim(),
+                            team: (row.team_name && row.team_name.trim ? row.team_name.trim() : '') || '',
+                                position: [posX, posZ, posY],
+                                health: parseFloat(row.health || 100),
+                                round: parseInt(row.round || 1),
+                            weapon: (row.weapon && row.weapon.trim ? row.weapon.trim() : null),
+                                yaw: !Number.isNaN(yaw) ? yaw : null,
+                                pitch: !Number.isNaN(pitch) ? pitch : null
+                            });
+                        }
+                        
+                        if (row.event && row.event.trim && row.event.trim()) {
+                            const eventType = row.event.trim().toLowerCase();
+                            
+                            // 킬 이벤트 중복 체크: 같은 tick의 킬 이벤트가 이미 있으면 추가하지 않음
+                            let shouldAddEvent = true;
+                            if (eventType.includes('kill') || eventType.includes('died')) {
+                                const attackerName = row.attacker_name && row.attacker_name.trim ? row.attacker_name.trim() : null;
+                                const victimName = row.victim_name && row.victim_name.trim ? row.victim_name.trim() : null;
+                                const existingKill = events.find(e => 
+                                    e.tick === tick && 
+                                    (e.event_type_lower && (e.event_type_lower.includes('kill') || e.event_type_lower.includes('died'))) &&
+                                    e.attacker && e.attacker.name === attackerName &&
+                                    e.victim && e.victim.name === victimName
+                                );
+                                if (existingKill) {
+                                    // 이미 같은 킬 이벤트가 있으면 추가하지 않음
+                                    shouldAddEvent = false;
+                                }
+                            }
+                            
+                            if (shouldAddEvent) {
+                                events.push({
+                                tick: tick,
+                                game_time: gameTime,
+                                event_type: row.event.trim(),
+                                event_type_lower: eventType,
+                            attacker: {
+                                    name: (row.attacker_name && row.attacker_name.trim ? row.attacker_name.trim() : null),
+                                    team: (row.attacker_team_name && row.attacker_team_name.trim ? row.attacker_team_name.trim() : null),
+                                    position: [
+                                        (row.attacker_X && row.attacker_X.trim ? parseFloat(row.attacker_X) : null),
+                                        (row.attacker_Z && row.attacker_Z.trim ? parseFloat(row.attacker_Z) : null),
+                                        (row.attacker_Y && row.attacker_Y.trim ? parseFloat(row.attacker_Y) : null)
+                                    ],
+                                    weapon: (row.weapon && row.weapon.trim ? row.weapon.trim() : null)
+                                },
+                                victim: {
+                                    name: (row.victim_name && row.victim_name.trim ? row.victim_name.trim() : null),
+                                    team: (row.victim_team_name && row.victim_team_name.trim ? row.victim_team_name.trim() : null),
+                                    position: [
+                                        (row.victim_X && row.victim_X.trim ? parseFloat(row.victim_X) : null),
+                                        (row.victim_Z && row.victim_Z.trim ? parseFloat(row.victim_Z) : null),
+                                        (row.victim_Y && row.victim_Y.trim ? parseFloat(row.victim_Y) : null)
+                                    ]
+                                },
+                            weapon: (row.weapon && row.weapon.trim ? row.weapon.trim() : null),
+                            headshot: (row.headshot && row.headshot.trim ? row.headshot.trim().toLowerCase() === 'true' : false)
+                                });
+                            }
+
+                            // 킬 이벤트의 공격자 Aim 데이터 수집 (나중에 일괄 처리)
+                            if (eventType.includes('kill') || eventType.includes('died')) {
+                            const yawStr = row.attacker_yaw && row.attacker_yaw.trim ? row.attacker_yaw.trim() : null;
+                            const pitchStr = row.attacker_pitch && row.attacker_pitch.trim ? row.attacker_pitch.trim() : null;
+                            const attackerName = row.attacker_name && row.attacker_name.trim ? row.attacker_name.trim() : null;
+                                if (attackerName && yawStr && pitchStr) {
+                                    const yaw = parseFloat(yawStr);
+                                    const pitch = parseFloat(pitchStr);
+                                    if (!Number.isNaN(yaw) && !Number.isNaN(pitch)) {
+                                        if (!aimIndex.has(attackerName)) aimIndex.set(attackerName, []);
+                                        // 중복 체크: 같은 tick의 킬이 이미 있으면 추가하지 않음
+                                        const existingKill = aimIndex.get(attackerName).find(a => 
+                                            a.type === 'kill' && a.tick === tick && Math.abs(a.time - gameTime) < 0.01
+                                        );
+                                        if (!existingKill) {
+                                            // 임시로 저장 (나중에 일괄 처리)
+                                            aimIndex.get(attackerName).push({ 
+                                                yaw, pitch, time: gameTime, tick: tick, type: 'kill',
+                                                _temp: true // 임시 표시
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                            }
+                        });
+                        
+                        // 진행 상황 업데이트 및 UI 차단 방지
+                        updateProgress((chunkEnd / totalRows) * 100);
+                        await new Promise(resolve => setTimeout(resolve, 0)); // 다음 이벤트 루프로
+                    }
+                    
+                    if (currentTick !== null && tickData.players && tickData.players.length) {
+                        positions.push({
+                            tick: currentTick,
+                            game_time: tickData.game_time || 0,
+                            players: tickData.players || []
+                        });
+                    }
+                    
+                    // 맵 경계 계산 (이미 계산됨)
+                    if (minX !== Infinity && maxX !== -Infinity) {
+                        this.mapBounds = {
+                            minX: minX,
+                            maxX: maxX,
+                            minY: minY,
+                            maxY: maxY,
+                            minZ: minZ,
+                            maxZ: maxZ,
+                            centerX: (minX + maxX) / 2,
+                            centerY: (minY + maxY) / 2,
+                            centerZ: (minZ + maxZ) / 2,
+                            width: maxX - minX,
+                            height: maxY - minY,
+                            depth: maxZ - minZ
+                        };
+                    }
+                    
+                    const gameTimes = positions.map(p => p.game_time).filter(t => t);
+                    const ticks = positions.map(p => p.tick).filter(t => t);
+                    const players = new Set();
+                    const playerStats = new Map();
+                    const playerIndex = new Map();
+                    
+                    // 플레이어 인덱스 및 Aim 데이터 수집 (최적화)
+                    positions.forEach(p => {
+                    p.players.forEach(pl => {
+                        if (pl.name) {
+                            players.add(pl.name);
+                            if (!playerStats.has(pl.name)) {
+                                playerStats.set(pl.name, { kills: 0, deaths: 0, team: pl.team });
+                            }
+                            if (!playerIndex.has(pl.name)) playerIndex.set(pl.name, []);
+                            playerIndex.get(pl.name).push({ tick: p.tick, time: p.game_time, position: pl.position });
+                            
+                            // Aim 데이터 수집 (모든 틱에서 yaw/pitch)
+                            if (pl.yaw !== null && pl.yaw !== undefined && 
+                                pl.pitch !== null && pl.pitch !== undefined) {
+                                if (!aimIndex.has(pl.name)) aimIndex.set(pl.name, []);
+                                aimIndex.get(pl.name).push({ 
+                                    yaw: pl.yaw, 
+                                    pitch: pl.pitch, 
+                                    time: p.game_time, 
+                                    tick: p.tick,
+                                    type: 'move' 
+                                });
+                            }
+                            }
+                        });
+                    });
+                    
+                    // Kill 이벤트의 aim 데이터를 move 데이터와 병합 (일괄 처리)
+                    aimIndex.forEach((arr, name) => {
+                        const kills = arr.filter(a => a.type === 'kill' && a._temp);
+                        const moves = arr.filter(a => a.type === 'move');
+                        
+                        // kill 타입을 같은 시간/틱의 move에 병합
+                        kills.forEach(kill => {
+                            const existing = moves.find(m => 
+                                Math.abs(m.time - kill.time) < 0.01 && m.tick === kill.tick
+                            );
+                            if (existing) {
+                                existing.type = 'kill';
+                            }
+                        });
+                        
+                        // 임시 kill 항목 제거 (병합된 것만 남김)
+                        arr.splice(0, arr.length, ...moves, ...kills.filter(k => {
+                            const exists = moves.some(m => 
+                                Math.abs(m.time - k.time) < 0.01 && m.tick === k.tick
+                            );
+                            return !exists;
+                        }));
+                    });
+                    
+                    events.forEach(e => {
+                        if (e.event_type_lower && (e.event_type_lower.includes('kill') || e.event_type_lower.includes('died'))) {
+                            if (e.attacker && e.attacker.name) {
+                                const stats = playerStats.get(e.attacker.name);
+                                if (stats) stats.kills++;
+                            }
+                            if (e.victim && e.victim.name) {
+                                const stats = playerStats.get(e.victim.name);
+                                if (stats) stats.deaths++;
+                            }
+                        }
+                    });
+                    
+                    this.data = {
+                        metadata: {
+                            total_ticks: positions.length,
+                            total_events: events.length,
+                            time_range: {
+                                min: gameTimes.length ? Math.min(...gameTimes) : 0,
+                                max: gameTimes.length ? Math.max(...gameTimes) : 0
+                            },
+                            tick_range: {
+                                min: ticks.length ? Math.min(...ticks) : 0,
+                                max: ticks.length ? Math.max(...ticks) : 0
+                            },
+                            players: Array.from(players).sort(),
+                            playerStats: Object.fromEntries(playerStats),
+                            teams: ['CT', 'TERRORIST']
+                        },
+                        positions: positions,
+                        events: events
+                    };
+                    this.playerIndex = playerIndex;
+                    // aimIndex 정렬 (시간순)
+                    aimIndex.forEach((arr, name) => {
+                        arr.sort((a, b) => a.time - b.time);
+                    });
+                    this.aimIndex = aimIndex;
+                    
+                    console.log('데이터 처리 완료:', this.data.metadata);
+                    console.log('맵 경계:', this.mapBounds);
+                    console.log('Positions 수:', positions.length);
+                    console.log('Events 수:', events.length);
+                    
+                    if (positions.length === 0) {
+                        console.error('Positions가 비어있습니다. 데이터 포맷을 확인하세요.');
+                        alert('데이터를 처리할 수 없습니다. CSV 파일 포맷을 확인하세요.');
+                        return;
+                    }
+                    
+                    this.updateUI();
+                    this.setupMapBounds();
+                    this.populateKillPicker();
+                    this.populatePlayerPicker();
+                    this.renderTick(0);
+                } catch (error) {
+                    console.error('processData 오류:', error);
+                    alert('데이터 처리 중 오류가 발생했습니다: ' + error.message);
+                    const loading = document.getElementById('loading');
+                    if (loading) loading.style.display = 'none';
+                }
+            }
+
+            renderAimTrace() {
+                const container = document.getElementById('event-log');
+                container.innerHTML = '';
+                const canvas = document.createElement('canvas');
+                canvas.width = container.clientWidth - 20;
+                canvas.height = container.clientHeight - 20;
+                canvas.style.background = '#0a0e15';
+                canvas.style.border = '1px solid #2a2f3e';
+                container.appendChild(canvas);
+
+                const ctx = canvas.getContext('2d');
+                const W = canvas.width;
+                const H = canvas.height;
+
+                // Focus 모드가 아니면 메시지 표시
+                if (!this.focusMode || !this.focusTickRange) {
+                    ctx.fillStyle = '#8a8fa5';
+                    ctx.font = '16px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Aim Trace는 Focus 모드에서만 사용할 수 있습니다.', W/2, H/2);
+                    ctx.fillText('킬 이벤트를 선택하여 Focus 모드를 활성화하세요.', W/2, H/2 + 30);
+                    return;
+                }
+
+                // 선택된 플레이어 우선순위: 포커스 모드일 때는 반드시 공격자 -> 선택된 플레이어 -> 첫 번째
+                let name = null;
+                if (this.focusMode && this.selectedEvent && this.selectedEvent.attacker && this.selectedEvent.attacker.name) {
+                    // 포커스 모드일 때는 무조건 공격자를 표시
+                    name = this.selectedEvent.attacker.name;
+                    console.log('Aim Trace - 포커스 모드: 공격자', name, '의 aim trace 표시');
+                } else if (this.selectedEvent && this.selectedEvent.attacker && this.selectedEvent.attacker.name) {
+                    name = this.selectedEvent.attacker.name;
+                } else {
+                    name = this.selectedPlayer || ((this.data && this.data.metadata && this.data.metadata.players && this.data.metadata.players[0]) || null);
+                }
+                
+                // 실제 데이터에서 Aim 정보 수집
+                let samples = [];
+                if (name && this.data) {
+                    console.log('Aim Trace - 플레이어:', name);
+                    
+                    // 포커스 모드일 때는 틱 인덱스 범위로 직접 수집 (모든 틱, 누적)
+                    if (this.focusMode && this.focusTickRange) {
+                        console.log('Aim Trace - 포커스 모드: 틱 범위', this.focusTickRange.startIdx, '-', this.focusTickRange.endIdx, '총', (this.focusTickRange.endIdx - this.focusTickRange.startIdx + 1), '틱');
+                        let foundCount = 0;
+                        let missingCount = 0;
+                        let lastYaw = null;
+                        let lastPitch = null;
+                        
+                        // 첫 번째 유효한 값을 찾기 위해 역방향으로도 검색
+                        for (let idx = this.focusTickRange.startIdx - 1; idx >= 0 && idx >= this.focusTickRange.startIdx - 10; idx--) {
+                            const pos = this.data.positions[idx];
+                            if (pos) {
+                                const player = pos.players.find(p => p.name === name);
+                                if (player && player.yaw !== null && player.yaw !== undefined && !Number.isNaN(player.yaw) &&
+                                    player.pitch !== null && player.pitch !== undefined && !Number.isNaN(player.pitch)) {
+                                    lastYaw = player.yaw;
+                                    lastPitch = player.pitch;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // 모든 틱을 순회하면서 실제 데이터가 있는 틱만 수집 (중복 제거)
+                        for (let idx = this.focusTickRange.startIdx; idx <= this.focusTickRange.endIdx; idx++) {
+                            const pos = this.data.positions[idx];
+                            if (pos) {
+                                const player = pos.players.find(p => p.name === name);
+                                if (player) {
+                                    const yaw = player.yaw;
+                                    const pitch = player.pitch;
+                                    
+                                    // 실제 데이터가 있는 경우만 추가 (보간 없이)
+                                    if (yaw !== null && yaw !== undefined && !Number.isNaN(yaw) &&
+                                        pitch !== null && pitch !== undefined && !Number.isNaN(pitch)) {
+                                        // 이전 샘플과 값이 다를 때만 추가 (중복 제거)
+                                        if (lastYaw === null || lastPitch === null || 
+                                            Math.abs(yaw - lastYaw) > 0.01 || Math.abs(pitch - lastPitch) > 0.01) {
+                                            samples.push({
+                                                yaw: yaw,
+                                                pitch: pitch,
+                                                time: pos.game_time,
+                                                tick: pos.tick,
+                                                tickIdx: idx, // 틱 인덱스 명시적 저장
+                                                type: 'move'
+                                            });
+                                            lastYaw = yaw;
+                                            lastPitch = pitch;
+                                            foundCount++;
+                                        } else {
+                                            // 같은 값이면 스킵 (중복 제거)
+                                            missingCount++;
+                                        }
+                                    } else {
+                                        missingCount++;
+                                    }
+                                } else {
+                                    missingCount++;
+                                }
+                            }
+                        }
+                        console.log('Aim Trace - 포커스 모드 수집:', foundCount, '고유 샘플, 중복/없음:', missingCount, '/ 전체 틱:', (this.focusTickRange.endIdx - this.focusTickRange.startIdx + 1));
+                        console.log('Aim Trace - 포커스 모드 범위:', this.focusTickRange.startIdx, '~', this.focusTickRange.endIdx, '틱');
+                    } else {
+                        // 일반 모드: 전체 positions에서 수집 (중복 제거 포함)
+                        let foundCount = 0;
+                        let missingCount = 0;
+                        let lastYaw = null;
+                        let lastPitch = null;
+                        this.data.positions.forEach(pos => {
+                            const player = pos.players.find(p => p.name === name);
+                            if (player) {
+                                // yaw/pitch 확인 (null 체크 및 유효성 검사)
+                                const yaw = player.yaw;
+                                const pitch = player.pitch;
+                                if (yaw !== null && yaw !== undefined && !Number.isNaN(yaw) &&
+                                    pitch !== null && pitch !== undefined && !Number.isNaN(pitch)) {
+                                    // 이전 샘플과 값이 다를 때만 추가 (중복 제거)
+                                    if (lastYaw === null || lastPitch === null || 
+                                        Math.abs(yaw - lastYaw) > 0.01 || Math.abs(pitch - lastPitch) > 0.01) {
+                                        samples.push({
+                                            yaw: yaw,
+                                            pitch: pitch,
+                                            time: pos.game_time,
+                                            tick: pos.tick,
+                                            type: 'move'
+                                        });
+                                        lastYaw = yaw;
+                                        lastPitch = pitch;
+                                        foundCount++;
+                                    } else {
+                                        missingCount++;
+                                    }
+                                } else {
+                                    missingCount++;
+                                }
+                            } else {
+                                missingCount++;
+                            }
+                        });
+                        console.log('Aim Trace - 일반 모드 수집:', foundCount, '고유 샘플, 중복/없음:', missingCount, '/ 전체:', this.data.positions.length);
+                    }
+                    
+                    // 킬 이벤트에서 kill 타입 마킹 (중복 제거 강화)
+                    if (this.aimIndex && this.aimIndex.has(name)) {
+                        let killPoints = this.aimIndex.get(name).filter(a => a.type === 'kill');
+
+                        // 포커스 모드에서는 선택된 이벤트의 킬만 표시 (중복 붉은 점 방지)
+                        if (this.focusMode && this.selectedEvent && this.selectedEvent.tick !== undefined) {
+                            const focusTick = this.selectedEvent.tick;
+                            const focusVictim = this.selectedEvent.victim ? this.selectedEvent.victim.name : null;
+                            killPoints = killPoints.filter(kp => {
+                                if (kp.tick !== focusTick) return false;
+                                // victim 정보가 있으면 일치하는 경우만 표시
+                                return focusVictim ? true : true;
+                            });
+                        }
+                        console.log('Aim Trace - Kill 포인트 수 (중복 제거 전):', killPoints.length);
+                        
+                        // 중복 제거: 같은 tick의 킬은 하나만 남김
+                        const uniqueKillPoints = [];
+                        const seenTicks = new Set();
+                        killPoints.forEach(kp => {
+                            if (!seenTicks.has(kp.tick)) {
+                                seenTicks.add(kp.tick);
+                                uniqueKillPoints.push(kp);
+                            }
+                        });
+                        
+                        console.log('Aim Trace - Kill 포인트 수 (중복 제거 후):', uniqueKillPoints.length);
+                        
+                        uniqueKillPoints.forEach(kp => {
+                            const existing = samples.find(s => 
+                                Math.abs(s.time - kp.time) < 0.01 && s.tick === kp.tick
+                            );
+                            if (existing) {
+                                existing.type = 'kill';
+                            } else {
+                                samples.push(kp);
+                            }
+                        });
+                    }
+                    
+                    samples.sort((a, b) => a.time - b.time);
+                    console.log('Aim Trace - 최종 샘플 수:', samples.length);
+                    
+                    // 데이터가 없으면 경고
+                    if (samples.length === 0) {
+                        console.warn('Aim Trace - 데이터가 없습니다. 플레이어:', name);
+                    }
+                } else {
+                    console.warn('Aim Trace - 플레이어 이름 또는 데이터가 없습니다.');
+                }
+
+                // 현재 재생 구간 - 포커스 모드일 때는 포커스 범위 사용
+                let tStart, tEnd;
+                if (this.focusMode && this.focusTickRange) {
+                    // 포커스 모드: 선택된 이벤트 전후 ±30틱 범위
+                    tStart = this.data.positions[this.focusTickRange.startIdx].game_time;
+                    tEnd = this.data.positions[this.focusTickRange.endIdx].game_time;
+                    console.log('Aim Trace - 포커스 모드 범위:', tStart.toFixed(2), '-', tEnd.toFixed(2), '범위:', (tEnd - tStart).toFixed(2), '초');
+                } else {
+                    const endIdx = this.currentTick;
+                    // 더 넓은 범위: 최근 300틱 또는 5초
+                    const startIdx = Math.max(0, endIdx - 300);
+                    tStart = (this.data.positions[startIdx] && this.data.positions[startIdx].game_time != null) ? this.data.positions[startIdx].game_time : 0;
+                    const currentTime = (this.data.positions[endIdx] && this.data.positions[endIdx].game_time != null) ? this.data.positions[endIdx].game_time : tStart;
+                    tEnd = currentTime;
+                    // 최소 5초 범위 보장
+                    if (tEnd - tStart < 5) {
+                        tStart = Math.max(0, tEnd - 5);
+                    }
+                }
+                const currentTime = (this.data.positions[this.currentTick] && this.data.positions[this.currentTick].game_time != null) ? this.data.positions[this.currentTick].game_time : tStart;
+                
+                // 포커스 모드일 때는 재생 중이면 현재 틱까지 누적, 아니면 전체 표시
+                // 일반 모드일 때만 시간 범위로 필터링
+                let windowSamples;
+                if (this.focusMode && this.focusTickRange) {
+                    // 포커스 모드: 재생 중이면 현재 틱까지 누적 표시 (틱 인덱스 기반)
+                    const currentTickIdx = this.currentTick;
+                    const startTickIdx = this.focusTickRange.startIdx;
+                    
+                    // 포커스 모드에서는 항상 전체 샘플 표시 (누적)
+                    // 재생 중이면 현재 틱까지만 표시하도록 옵션 제공
+                    if (this.isPlaying && currentTickIdx > startTickIdx) {
+                        // 재생 중: 현재 틱까지의 샘플만 표시 (순차적 누적)
+                        windowSamples = samples.filter(s => {
+                            // tickIdx가 있으면 사용, 없으면 positions에서 찾기
+                            let sampleTickIdx = s.tickIdx;
+                            if (sampleTickIdx === undefined) {
+                                sampleTickIdx = this.data.positions.findIndex(p => p.tick === s.tick);
+                            }
+                            return sampleTickIdx !== -1 && sampleTickIdx <= currentTickIdx && sampleTickIdx >= startTickIdx;
+                        });
+                        console.log('Aim Trace - 포커스 모드 (재생 중): 틱', startTickIdx, '~', currentTickIdx, '까지', windowSamples.length, '샘플 누적 (전체 samples:', samples.length, ')');
+                    } else {
+                        // 정지 상태면 전체 표시 (모든 샘플)
+                        windowSamples = samples;
+                        console.log('Aim Trace - 포커스 모드 (정지): 전체', windowSamples.length, '샘플 표시');
+                    }
+                } else {
+                    // 일반 모드: 시간 범위로 필터링
+                    windowSamples = samples.filter(s => s.time >= tStart && s.time <= tEnd);
+                }
+                
+                console.log('Aim Trace - 윈도우 샘플 수:', windowSamples.length, '시간 범위:', tStart.toFixed(2), '-', tEnd.toFixed(2), '범위:', (tEnd - tStart).toFixed(2), '초');
+                console.log('Aim Trace - 샘플 yaw 범위:', windowSamples.length > 0 ? [Math.min(...windowSamples.map(s => s.yaw)).toFixed(2), Math.max(...windowSamples.map(s => s.yaw)).toFixed(2)] : '없음');
+                console.log('Aim Trace - 샘플 pitch 범위:', windowSamples.length > 0 ? [Math.min(...windowSamples.map(s => s.pitch)).toFixed(2), Math.max(...windowSamples.map(s => s.pitch)).toFixed(2)] : '없음');
+                
+                // 데이터가 없으면 메시지 표시
+                if (samples.length === 0) {
+                    ctx.fillStyle = '#8a8fa5';
+                    ctx.font = '16px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('No aim data available for ' + (name || 'selected player'), W/2, H/2);
+                    ctx.textAlign = 'left';
+                    return;
+                }
+                
+                if (windowSamples.length === 0) {
+                    ctx.fillStyle = '#8a8fa5';
+                    ctx.font = '14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('No data in current time window', W/2, H/2);
+                    ctx.textAlign = 'left';
+                    return;
+                }
+
+                // 실제 데이터 범위 계산 (동적 스케일링)
+                const yaws = windowSamples.map(s => s.yaw).filter(v => !Number.isNaN(v));
+                const pitches = windowSamples.map(s => s.pitch).filter(v => !Number.isNaN(v));
+                
+                let xMin, xMax, yMin, yMax;
+                if (yaws.length > 0 && pitches.length > 0) {
+                    const yawMin = Math.min(...yaws);
+                    const yawMax = Math.max(...yaws);
+                    const pitchMin = Math.min(...pitches);
+                    const pitchMax = Math.max(...pitches);
+                    
+                    const yawRange = yawMax - yawMin;
+                    const pitchRange = pitchMax - pitchMin;
+                    
+                    // 범위가 매우 좁으면 (10도 이하) 확대, 아니면 전체 범위 사용
+                    if (yawRange < 10 && pitchRange < 10) {
+                        // 확대: 중앙 기준으로 ±20도 범위
+                        const yawCenter = (yawMin + yawMax) / 2;
+                        const pitchCenter = (pitchMin + pitchMax) / 2;
+                        xMin = yawCenter - 20;
+                        xMax = yawCenter + 20;
+                        yMin = pitchCenter - 20;
+                        yMax = pitchCenter + 20;
+                        console.log('Aim Trace - 확대 모드:', {yawCenter, pitchCenter, range: '±20°'});
+                    } else {
+                        // 여백 추가 (10% padding)
+                        const yawPadding = Math.max(yawRange * 0.1, 5);
+                        const pitchPadding = Math.max(pitchRange * 0.1, 5);
+                        xMin = yawMin - yawPadding;
+                        xMax = yawMax + yawPadding;
+                        yMin = pitchMin - pitchPadding;
+                        yMax = pitchMax + pitchPadding;
+                        console.log('Aim Trace - 동적 범위:', {yaw: [xMin, xMax], pitch: [yMin, yMax]});
+                    }
+                } else {
+                    // 기본 범위
+                    xMin = -180; xMax = 180; yMin = -90; yMax = 90;
+                }
+                
+                console.log('Aim Trace - 좌표 범위:', {yaw: [xMin.toFixed(1), xMax.toFixed(1)], pitch: [yMin.toFixed(1), yMax.toFixed(1)]});
+                
+                const pad = 40;
+                
+                function xScale(v){ return pad + (v - xMin) / (xMax - xMin) * (W - 2*pad); }
+                function yScale(v){ return H - (pad + (v - yMin) / (yMax - yMin) * (H - 2*pad)); }
+
+                // 배경 그리드 (동적 범위에 맞춰)
+                ctx.strokeStyle = '#2a2f3e'; ctx.lineWidth = 1;
+                const gridStepX = Math.max(1, Math.ceil((xMax - xMin) / 20)); // 약 20개 그리드
+                const gridStepY = Math.max(1, Math.ceil((yMax - yMin) / 15)); // 약 15개 그리드
+                
+                for (let x = Math.floor(xMin / gridStepX) * gridStepX; x <= xMax; x += gridStepX) {
+                    const sx = xScale(x);
+                    if (sx >= pad && sx <= W - pad) {
+                        ctx.beginPath(); ctx.moveTo(sx, pad); ctx.lineTo(sx, H - pad); ctx.stroke();
+                    }
+                }
+                for (let y = Math.floor(yMin / gridStepY) * gridStepY; y <= yMax; y += gridStepY) {
+                    const sy = yScale(y);
+                    if (sy >= pad && sy <= H - pad) {
+                        ctx.beginPath(); ctx.moveTo(pad, sy); ctx.lineTo(W - pad, sy); ctx.stroke();
+                    }
+                }
+                
+                // 축 라벨 (범위 표시)
+                ctx.fillStyle = '#8a8fa5'; ctx.font = '12px Arial';
+                ctx.fillText(`Yaw (°) [${xMin.toFixed(1)} ~ ${xMax.toFixed(1)}]`, W/2 - 80, H-10);
+                ctx.save(); ctx.translate(10, H/2); ctx.rotate(-Math.PI/2); 
+                ctx.fillText(`Pitch (°) [${yMin.toFixed(1)} ~ ${yMax.toFixed(1)}]`, 0, 0); ctx.restore();
+
+                // 모든 포인트 표시 (누적 이동 경로) - 고유한 값만 표시
+                console.log('Aim Trace - 렌더링할 포인트 수:', windowSamples.length);
+                
+                // 중복 제거: 연속된 같은 값 제거 (먼저 생성)
+                const uniqueSamples = [];
+                let lastRenderedYaw = null;
+                let lastRenderedPitch = null;
+                
+                windowSamples.forEach((s, idx) => {
+                    // 값이 변경되었거나 첫 번째 샘플이면 추가
+                    if (lastRenderedYaw === null || lastRenderedPitch === null ||
+                        Math.abs(s.yaw - lastRenderedYaw) > 0.01 || Math.abs(s.pitch - lastRenderedPitch) > 0.01) {
+                        uniqueSamples.push(s);
+                        lastRenderedYaw = s.yaw;
+                        lastRenderedPitch = s.pitch;
+                    }
+                });
+                
+                console.log('Aim Trace - 중복 제거 후 고유 포인트 수:', uniqueSamples.length, '/', windowSamples.length);
+
+                // 경로 연결선 (기본 회색) - 고유 포인트만 연결
+                if (uniqueSamples.length > 1){
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#5a637a'; ctx.lineWidth = 1.5;
+                    let firstPoint = true;
+                    for (let i = 0; i < uniqueSamples.length; i++) {
+                        const s = uniqueSamples[i];
+                        const x = xScale(s.yaw);
+                        const y = yScale(s.pitch);
+                        if (firstPoint) {
+                            ctx.moveTo(x, y);
+                            firstPoint = false;
+                        } else {
+                            ctx.lineTo(x, y);
+                        }
+                    }
+                    ctx.stroke();
+                }
+                
+                // 포인트 렌더링
+                if (uniqueSamples.length === 0) {
+                    console.warn('Aim Trace - 렌더링할 고유 포인트가 없습니다. windowSamples:', windowSamples.length);
+                } else {
+                    console.log('Aim Trace - 렌더링 시작: 고유 포인트', uniqueSamples.length, '개');
+                }
+                
+                uniqueSamples.forEach((s, idx) => {
+                    const x = xScale(s.yaw);
+                    const y = yScale(s.pitch);
+                    
+                    // 캔버스 범위 체크
+                    if (x < 0 || x > W || y < 0 || y > H) {
+                        if (idx < 3) {
+                            console.warn(`포인트 ${idx}가 캔버스 범위를 벗어남: canvas(${x.toFixed(1)}, ${y.toFixed(1)})`);
+                        }
+                        return; // 범위를 벗어난 포인트는 스킵
+                    }
+                    
+                    // 디버깅: 처음 3개와 마지막 3개 포인트만 로그
+                    if (idx < 3 || idx >= uniqueSamples.length - 3) {
+                        console.log(`고유 포인트 ${idx}/${uniqueSamples.length}: yaw=${s.yaw.toFixed(2)}, pitch=${s.pitch.toFixed(2)}, canvas(${x.toFixed(1)}, ${y.toFixed(1)})`);
+                    }
+                    
+                    if (s.type === 'kill') {
+                        // Kill 시점: 진빨강 큰 원 + 테두리
+                        ctx.fillStyle = '#cc0000';
+                        ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI*2); ctx.fill();
+                        ctx.strokeStyle = '#ff3333'; ctx.lineWidth = 2; ctx.stroke();
+                    } else {
+                        // 일반 이동 포인트: 작은 회색 점 (모두 표시)
+                        ctx.fillStyle = '#8a8fa5';
+                        ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI*2); ctx.fill();
+                    }
+                });
+
+                // 현재 틱의 마우스 위치 하이라이트 (파랑 큰 점) - 고유 샘플에서 찾기
+                const curr = uniqueSamples.reduce((prev, s) => {
+                    const prevDiff = prev ? Math.abs(s.time - currentTime) : Infinity;
+                    const currDiff = Math.abs(s.time - currentTime);
+                    return currDiff < prevDiff ? s : prev;
+                }, null);
+                if (curr) {
+                    const cx = xScale(curr.yaw), cy = yScale(curr.pitch);
+                    ctx.fillStyle = '#4a90e2';
+                    ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI*2); ctx.fill();
+                    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke();
+                }
+
+                // 범례
+                const legend = [
+                    {label:'Current', color:'#4a90e2'},
+                    {label:'Kill', color:'#cc0000'}
+                ];
+                let lx = pad, ly = pad-12;
+                legend.forEach(l =>{
+                    ctx.fillStyle = l.color; ctx.beginPath(); ctx.arc(lx,ly,4,0,Math.PI*2); ctx.fill();
+                    ctx.fillStyle = '#8a8fa5'; ctx.fillText(l.label, lx+10, ly+4);
+                    lx += 80;
+                });
+
+                // 제목
+                ctx.fillStyle = '#ffffff'; ctx.font = '14px Arial';
+                ctx.fillText(`Aim Trace - ${name || 'N/A'}`, pad, 20);
+            }
+
+            generateReport(playerName) {
+                if (!this.data || !playerName) return;
+                
+                const stats = this.data.metadata.playerStats[playerName] || { kills: 0, deaths: 0, team: '' };
+                // 플레이어가 킬한 이벤트만 필터링 (중복 제거)
+                let playerKills = this.data.events.filter(e => 
+                    e.attacker && e.attacker.name === playerName &&
+                    e.event_type_lower && e.event_type_lower.includes('kill')
+                );
+                
+                // 같은 tick의 중복 킬 제거
+                const seenTicks = new Set();
+                playerKills = playerKills.filter(e => {
+                    if (seenTicks.has(e.tick)) {
+                        return false;
+                    }
+                    seenTicks.add(e.tick);
+                    return true;
+                });
+                
+                console.log('Generate Report - 플레이어 킬 수 (중복 제거 후):', playerKills.length);
+                
+                // 각 킬 이벤트별로 Aim Trace 생성 (±30틱 범위)
+                const killTraceImages = [];
+                
+                playerKills.forEach((killEvent, killIdx) => {
+                    // 킬 이벤트의 틱 인덱스 찾기
+                    const killTickIdx = this.data.positions.findIndex(p => p.tick === killEvent.tick);
+                    if (killTickIdx === -1) return;
+                    
+                    // ±30틱 범위 계산
+                    const startIdx = Math.max(0, killTickIdx - 30);
+                    const endIdx = Math.min(this.data.positions.length - 1, killTickIdx + 30);
+                    
+                    // 해당 범위의 Aim 데이터 수집
+                    const killAimData = [];
+                    for (let idx = startIdx; idx <= endIdx; idx++) {
+                        const pos = this.data.positions[idx];
+                        if (pos) {
+                            const player = pos.players.find(p => p.name === playerName);
+                            if (player && player.yaw !== null && player.yaw !== undefined && !Number.isNaN(player.yaw) &&
+                                player.pitch !== null && player.pitch !== undefined && !Number.isNaN(player.pitch)) {
+                                killAimData.push({
+                                    yaw: player.yaw,
+                                    pitch: player.pitch,
+                                    time: pos.game_time,
+                                    tick: pos.tick,
+                                    tickIdx: idx,
+                                    type: idx === killTickIdx ? 'kill' : 'move'
+                                });
+                            }
+                        }
+                    }
+                    
+                    if (killAimData.length === 0) return;
+                    
+                    // 중복 제거 (연속된 같은 값)
+                    const uniqueKillAimData = [];
+                    let lastYaw = null;
+                    let lastPitch = null;
+                    killAimData.forEach(s => {
+                        if (lastYaw === null || lastPitch === null ||
+                            Math.abs(s.yaw - lastYaw) > 0.01 || Math.abs(s.pitch - lastPitch) > 0.01) {
+                            uniqueKillAimData.push(s);
+                            lastYaw = s.yaw;
+                            lastPitch = s.pitch;
+                        }
+                    });
+                    
+                    // Aim Trace 캔버스 생성
+                    const killTraceCanvas = document.createElement('canvas');
+                    killTraceCanvas.width = 800;
+                    killTraceCanvas.height = 600;
+                    const killCtx = killTraceCanvas.getContext('2d');
+                    
+                    // 동적 범위 계산
+                    const yaws = uniqueKillAimData.map(s => s.yaw);
+                    const pitches = uniqueKillAimData.map(s => s.pitch);
+                    let xMin = Math.min(...yaws);
+                    let xMax = Math.max(...yaws);
+                    let yMin = Math.min(...pitches);
+                    let yMax = Math.max(...pitches);
+                    
+                    // 범위가 너무 좁으면 확대
+                    const xRange = xMax - xMin;
+                    const yRange = yMax - yMin;
+                    if (xRange < 10) {
+                        const center = (xMin + xMax) / 2;
+                        xMin = center - 10;
+                        xMax = center + 10;
+                    }
+                    if (yRange < 10) {
+                        const center = (yMin + yMax) / 2;
+                        yMin = center - 10;
+                        yMax = center + 10;
+                    }
+                    
+                    // 패딩 추가
+                    const xPadding = (xMax - xMin) * 0.1;
+                    const yPadding = (yMax - yMin) * 0.1;
+                    xMin -= xPadding;
+                    xMax += xPadding;
+                    yMin -= yPadding;
+                    yMax += yPadding;
+                    
+                    const pad = 40;
+                    const W = killTraceCanvas.width, H = killTraceCanvas.height;
+                    
+                    function xScale(v){ return pad + (v - xMin) / (xMax - xMin) * (W - 2*pad); }
+                    function yScale(v){ return H - (pad + (v - yMin) / (yMax - yMin) * (H - 2*pad)); }
+                    
+                    // 배경
+                    killCtx.fillStyle = '#0a0e15';
+                    killCtx.fillRect(0, 0, W, H);
+                    
+                    // 그리드
+                    killCtx.strokeStyle = '#2a2f3e';
+                    killCtx.lineWidth = 1;
+                    const xStep = Math.max(10, Math.ceil((xMax - xMin) / 10));
+                    const yStep = Math.max(5, Math.ceil((yMax - yMin) / 10));
+                    for (let x = Math.floor(xMin / xStep) * xStep; x <= xMax; x += xStep) {
+                        const sx = xScale(x);
+                        if (sx >= pad && sx <= W - pad) {
+                            killCtx.beginPath();
+                            killCtx.moveTo(sx, pad);
+                            killCtx.lineTo(sx, H - pad);
+                            killCtx.stroke();
+                        }
+                    }
+                    for (let y = Math.floor(yMin / yStep) * yStep; y <= yMax; y += yStep) {
+                        const sy = yScale(y);
+                        if (sy >= pad && sy <= H - pad) {
+                            killCtx.beginPath();
+                            killCtx.moveTo(pad, sy);
+                            killCtx.lineTo(W - pad, sy);
+                            killCtx.stroke();
+                        }
+                    }
+                    
+                    // 경로 연결선
+                    if (uniqueKillAimData.length > 1) {
+                        killCtx.beginPath();
+                        killCtx.strokeStyle = '#5a637a';
+                        killCtx.lineWidth = 1.5;
+                        killCtx.moveTo(xScale(uniqueKillAimData[0].yaw), yScale(uniqueKillAimData[0].pitch));
+                        for (let i = 1; i < uniqueKillAimData.length; i++) {
+                            killCtx.lineTo(xScale(uniqueKillAimData[i].yaw), yScale(uniqueKillAimData[i].pitch));
+                        }
+                        killCtx.stroke();
+                    }
+                    
+                    // 포인트
+                    uniqueKillAimData.forEach(s => {
+                        const x = xScale(s.yaw), y = yScale(s.pitch);
+                        if (s.type === 'kill') {
+                            // Kill 시점: 진빨강 큰 원 + 테두리
+                            killCtx.fillStyle = '#cc0000';
+                            killCtx.beginPath();
+                            killCtx.arc(x, y, 5, 0, Math.PI*2);
+                            killCtx.fill();
+                            killCtx.strokeStyle = '#ff3333';
+                            killCtx.lineWidth = 2;
+                            killCtx.stroke();
+                        } else {
+                            // 일반 이동 포인트: 작은 회색 점
+                            killCtx.fillStyle = '#8a8fa5';
+                            killCtx.beginPath();
+                            killCtx.arc(x, y, 2, 0, Math.PI*2);
+                            killCtx.fill();
+                        }
+                    });
+                    
+                    // 제목 및 정보
+                    killCtx.fillStyle = '#ffffff';
+                    killCtx.font = 'bold 16px Arial';
+                    killCtx.fillText(`Kill #${killIdx + 1} - ${killEvent.victim ? killEvent.victim.name : 'Unknown'}`, pad, 25);
+                    killCtx.font = '12px Arial';
+                    killCtx.fillStyle = '#8a8fa5';
+                    const timeStr = killEvent.game_time ? `${Math.floor(killEvent.game_time / 60)}:${(killEvent.game_time % 60).toFixed(2)}` : 'N/A';
+                    killCtx.fillText(`Time: ${timeStr} | Tick: ${killEvent.tick}`, pad, 45);
+                    killCtx.fillText(`Yaw: [${xMin.toFixed(1)} ~ ${xMax.toFixed(1)}] Pitch: [${yMin.toFixed(1)} ~ ${yMax.toFixed(1)}]`, pad, H - 15);
+                    
+                    killTraceImages.push({
+                        image: killTraceCanvas.toDataURL('image/png'),
+                        killNum: killIdx + 1,
+                        victim: killEvent.victim ? killEvent.victim.name : 'Unknown',
+                        time: timeStr
+                    });
+                });
+                
+                // 모든 킬 트레이스를 하나의 이미지로 합치기 (세로로 배치) - 비동기 처리
+                const generateCombinedImage = () => {
+                    return new Promise((resolve) => {
+                        if (killTraceImages.length === 0) {
+                            resolve('');
+                            return;
+                        }
+                        
+                        const combinedCanvas = document.createElement('canvas');
+                        const traceHeight = 600;
+                        const traceSpacing = 20;
+                        combinedCanvas.width = 800;
+                        combinedCanvas.height = killTraceImages.length * (traceHeight + traceSpacing) - traceSpacing;
+                        const combinedCtx = combinedCanvas.getContext('2d');
+                        
+                        combinedCtx.fillStyle = '#1a1f2e';
+                        combinedCtx.fillRect(0, 0, combinedCanvas.width, combinedCanvas.height);
+                        
+                        let loadedCount = 0;
+                        killTraceImages.forEach((trace, idx) => {
+                            const img = new Image();
+                            img.onload = () => {
+                                const y = idx * (traceHeight + traceSpacing);
+                                combinedCtx.drawImage(img, 0, y);
+                                loadedCount++;
+                                if (loadedCount === killTraceImages.length) {
+                                    resolve(combinedCanvas.toDataURL('image/png'));
+                                }
+                            };
+                            img.onerror = () => {
+                                loadedCount++;
+                                if (loadedCount === killTraceImages.length) {
+                                    resolve(combinedCanvas.toDataURL('image/png'));
+                                }
+                            };
+                            img.src = trace.image;
+                        });
+                    });
+                };
+                
+                // 보고서 생성 (이미지 로딩 대기)
+                generateCombinedImage().then(combinedAimTraceImage => {
+                
+                    // 보고서 HTML 생성
+                    const reportHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Player Report - ${playerName}</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #1a1f2e; color: #fff; }
+        .header { border-bottom: 2px solid #4a90e2; padding-bottom: 10px; margin-bottom: 20px; }
+        .section { margin: 20px 0; padding: 15px; background: #2a2f3e; border-radius: 8px; }
+        .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .stat-item { padding: 10px; background: #1a1f2e; border-radius: 4px; }
+        .stat-label { color: #8a8fa5; font-size: 12px; }
+        .stat-value { color: #fff; font-size: 18px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #3a3f4e; }
+        th { background: #1a1f2e; color: #4a90e2; }
+    </style>
+</head>
+<body>
+    <button id="download-btn" style="position:fixed; top:16px; right:16px; background:#4a90e2; color:#fff; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.3);">Download</button>
+    <div class="header">
+        <h1>Player Analysis Report</h1>
+        <h2>${playerName}</h2>
+        <p>Generated: ${new Date().toLocaleString()}</p>
+    </div>
+    
+    <div class="section">
+        <h3>Match Statistics</h3>
+        <div class="stat-grid">
+            <div class="stat-item">
+                <div class="stat-label">Team</div>
+                <div class="stat-value">${stats.team || 'N/A'}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Kills</div>
+                <div class="stat-value">${stats.kills}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Deaths</div>
+                <div class="stat-value">${stats.deaths}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">K/D Ratio</div>
+                <div class="stat-value">${stats.deaths > 0 ? (stats.kills / stats.deaths).toFixed(2) : stats.kills.toFixed(2)}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Total Kills</div>
+                <div class="stat-value">${playerKills.length}</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Kill Traces</div>
+                <div class="stat-value">${killTraceImages.length}</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h3>Kill Events</h3>
+        <table>
+            <tr><th>Time</th><th>Event</th><th>Victim</th><th>Weapon</th><th>Headshot</th></tr>
+            ${playerKills.slice(0, 20).map(e => `
+                <tr>
+                    <td>${this.formatTime(e.game_time)}</td>
+                    <td>${e.attacker.name === playerName ? 'KILLED' : 'DIED'}</td>
+                    <td>${e.attacker.name === playerName ? e.victim.name : e.attacker.name}</td>
+                    <td>${e.weapon || 'N/A'}</td>
+                    <td>${e.headshot ? 'Yes' : 'No'}</td>
+                </tr>
+            `).join('')}
+        </table>
+    </div>
+    
+    <div class="section">
+        <h3>Aim Movement Analysis - Kill Events</h3>
+        <p>Total Kills: ${playerKills.length}</p>
+        <p>Kill Traces Generated: ${killTraceImages.length}</p>
+        ${killTraceImages.length > 0 ? `
+            <div style="margin-top: 15px;">
+                <h4>Individual Kill Aim Traces (±30 ticks around each kill)</h4>
+                ${killTraceImages.map(trace => `
+                    <div style="margin-bottom: 30px; padding: 15px; background: #1a1f2e; border-radius: 4px;">
+                        <h5 style="color: #4a90e2; margin-bottom: 10px;">Kill #${trace.killNum} - ${trace.victim} (Time: ${trace.time})</h5>
+                        <img src="${trace.image}" style="max-width: 100%; border: 1px solid #3a3f4e; border-radius: 4px;" />
+                    </div>
+                `).join('')}
+                
+            </div>
+        ` : '<p>No kill events with aim data available</p>'}
+    </div>
+</body>
+<script>
+    (function(){
+        const btn = document.getElementById('download-btn');
+        if (btn) {
+            btn.addEventListener('click', function(){
+                const html = document.documentElement.outerHTML;
+                const blob = new Blob([html], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const filename = 'report_' + '${playerName}' + '_' + Date.now() + '.html';
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        }
+    })();
+<\/script>
+</html>
+                `;
+                    
+                    // 새 창으로 열기
+                    const win = window.open('', '_blank');
+                    win.document.write(reportHTML);
+                    win.document.close();
+                    
+                    // 다운로드는 리포트 우측 상단 버튼을 통해 수행
+                });
+            }
+
+            setupMapBounds() {
+                if (!this.mapBounds) return;
+                
+                // 맵 경계 박스 표시
+                const bounds = this.mapBounds;
+                const width = bounds.width;
+                const height = bounds.depth;
+                const depth = bounds.height;
+                
+                const geometry = new THREE.BoxGeometry(width, depth, height);
+                const edges = new THREE.EdgesGeometry(geometry);
+                const line = new THREE.LineSegments(
+                    edges,
+                    new THREE.LineBasicMaterial({ color: 0x4a90e2, opacity: 0.3, transparent: true })
+                );
+                line.position.set(bounds.centerX, bounds.centerZ, bounds.centerY);
+                this.scene.add(line);
+                
+                // 카메라 위치 조정 및 기본 거리 설정
+                const maxDim = Math.max(width, height, depth);
+                this.baseCameraDistance = maxDim * 1.2;
+                this.cameraDistance = this.baseCameraDistance;
+                this.camera.position.set(
+                    bounds.centerX,
+                    bounds.centerZ + maxDim * 0.8,
+                    bounds.centerY + maxDim * 1.2
+                );
+                this.camera.lookAt(bounds.centerX, bounds.centerZ, bounds.centerY);
+                
+                // 그리드 조정 (더 명확하게)
+                const gridSize = Math.max(width, height) * 1.2;
+                const gridDivisions = Math.ceil(gridSize / 100); // 100 단위로 구분
+                const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x4a90e2, 0x2a3f5a);
+                gridHelper.position.set(bounds.centerX, 0, bounds.centerY);
+                this.scene.add(gridHelper);
+                
+                // 구역 표시를 위한 선 추가 (10x10 구역)
+                const sectorSize = Math.max(width, height) / 10;
+                const sectorsHelper = new THREE.Group();
+                
+                // X축 선
+                for (let i = 0; i <= 10; i++) {
+                    const x = bounds.minX + (width / 10) * i;
+                    const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                        new THREE.Vector3(x, bounds.centerZ, bounds.minY),
+                        new THREE.Vector3(x, bounds.centerZ, bounds.maxY)
+                    ]);
+                    const lineMaterial = new THREE.LineBasicMaterial({ 
+                        color: 0x3a4f6a, 
+                        opacity: 0.3, 
+                        transparent: true 
+                    });
+                    const line = new THREE.Line(lineGeometry, lineMaterial);
+                    sectorsHelper.add(line);
+                }
+                
+                // Y축 선
+                for (let i = 0; i <= 10; i++) {
+                    const y = bounds.minY + (height / 10) * i;
+                    const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                        new THREE.Vector3(bounds.minX, bounds.centerZ, y),
+                        new THREE.Vector3(bounds.maxX, bounds.centerZ, y)
+                    ]);
+                    const lineMaterial = new THREE.LineBasicMaterial({ 
+                        color: 0x3a4f6a, 
+                        opacity: 0.3, 
+                        transparent: true 
+                    });
+                    const line = new THREE.Line(lineGeometry, lineMaterial);
+                    sectorsHelper.add(line);
+                }
+                
+                this.scene.add(sectorsHelper);
+                
+                // 좌표축 표시 (원점 및 주요 구역)
+                const axesHelper = new THREE.AxesHelper(Math.max(width, height) * 0.1);
+                axesHelper.position.set(bounds.centerX, bounds.centerZ, bounds.centerY);
+                this.scene.add(axesHelper);
+                
+                // 구역 라벨 추가 (주요 포인트)
+                const labelPoints = [
+                    { x: bounds.minX, y: bounds.minY, label: 'A1' },
+                    { x: bounds.centerX, y: bounds.minY, label: 'B1' },
+                    { x: bounds.maxX, y: bounds.minY, label: 'C1' },
+                    { x: bounds.minX, y: bounds.centerY, label: 'A2' },
+                    { x: bounds.centerX, y: bounds.centerY, label: 'Center' },
+                    { x: bounds.maxX, y: bounds.centerY, label: 'C2' },
+                    { x: bounds.minX, y: bounds.maxY, label: 'A3' },
+                    { x: bounds.centerX, y: bounds.maxY, label: 'B3' },
+                    { x: bounds.maxX, y: bounds.maxY, label: 'C3' }
+                ];
+                
+                labelPoints.forEach(point => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = 128;
+                    canvas.height = 32;
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#8a8fa5';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(point.label, canvas.width / 2, canvas.height / 2 + 4);
+                    
+                    const texture = new THREE.CanvasTexture(canvas);
+                    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
+                        map: texture, 
+                        transparent: true 
+                    }));
+                    sprite.position.set(point.x, bounds.centerZ + 5, point.y);
+                    sprite.scale.set(40, 10, 1);
+                    this.scene.add(sprite);
+                });
+                
+                // UI 업데이트
+                document.getElementById('map-bounds').textContent = 
+                    `X: ${bounds.minX.toFixed(0)} ~ ${bounds.maxX.toFixed(0)}\n` +
+                    `Y: ${bounds.minY.toFixed(0)} ~ ${bounds.maxY.toFixed(0)}\n` +
+                    `Z: ${bounds.minZ.toFixed(0)} ~ ${bounds.maxZ.toFixed(0)}\n` +
+                    `Size: ${width.toFixed(0)} × ${height.toFixed(0)} × ${depth.toFixed(0)}`;
+            }
+
+            setupScene() {
+                const container = document.getElementById('canvas-container');
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x0a0e15);
+                this.scene.fog = new THREE.Fog(0x0a0e15, 1000, 5000);
+
+                this.camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 10000);
+                this.camera.position.set(0, 500, 1000);
+                this.camera.lookAt(0, 0, 0);
+
+                this.renderer = new THREE.WebGLRenderer({ 
+                    canvas: document.getElementById('canvas'),
+                    antialias: true 
+                });
+                this.renderer.setSize(width, height);
+                this.renderer.shadowMap.enabled = true;
+
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                this.scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+                directionalLight.position.set(500, 1000, 500);
+                directionalLight.castShadow = true;
+                this.scene.add(directionalLight);
+
+                window.addEventListener('resize', () => {
+                    const width = container.clientWidth;
+                    const height = container.clientHeight;
+                    this.camera.aspect = width / height;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(width, height);
+                });
+            }
+
+            setupControls() {
+                let isMouseDown = false;
+                let mouseX = 0, mouseY = 0;
+
+                const canvas = document.getElementById('canvas');
+                
+                canvas.addEventListener('mousedown', (e) => {
+                    isMouseDown = true;
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                });
+
+                canvas.addEventListener('mousemove', (e) => {
+                    if (isMouseDown) {
+                        const deltaX = e.clientX - mouseX;
+                        const deltaY = e.clientY - mouseY;
+                        this.cameraRotationY += deltaX * 0.01;
+                        this.cameraRotationX += deltaY * 0.01;
+                        this.cameraRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.cameraRotationX));
+                        mouseX = e.clientX;
+                        mouseY = e.clientY;
+                    }
+                });
+
+                canvas.addEventListener('mouseup', () => {
+                    isMouseDown = false;
+                });
+
+                canvas.addEventListener('wheel', (e) => {
+                    const speed = e.shiftKey ? 2 : 1; // Shift로 더 빠르게
+                    this.cameraDistance += e.deltaY * 5 * speed;
+                    // 확대/축소 한계 완화
+                    const minDist = this.baseCameraDistance * 0.05; // 더 가까이 확대
+                    const maxDist = this.baseCameraDistance * 10.0;  // 더 멀리 축소
+                    this.cameraDistance = Math.max(minDist, Math.min(maxDist, this.cameraDistance));
+                    e.preventDefault();
+                });
+
+                this.updateCamera = () => {
+                    // 타겟이 설정되어 있으면 타겟 중심, 없으면 맵 중심
+                    if (this.cameraTarget) {
+                        this.updateCameraToTarget();
+                    } else if (this.mapBounds) {
+                        const bounds = this.mapBounds;
+                        const x = bounds.centerX + this.cameraDistance * Math.sin(this.cameraRotationY) * Math.cos(this.cameraRotationX);
+                        const y = bounds.centerZ + this.cameraDistance * Math.sin(this.cameraRotationX);
+                        const z = bounds.centerY + this.cameraDistance * Math.cos(this.cameraRotationY) * Math.cos(this.cameraRotationX);
+                        this.camera.position.set(x, y, z);
+                        this.camera.lookAt(bounds.centerX, bounds.centerZ, bounds.centerY);
+                    } else {
+                        const x = this.cameraDistance * Math.sin(this.cameraRotationY) * Math.cos(this.cameraRotationX);
+                        const y = this.cameraDistance * Math.sin(this.cameraRotationX);
+                        const z = this.cameraDistance * Math.cos(this.cameraRotationY) * Math.cos(this.cameraRotationX);
+                        this.camera.position.set(x, y, z);
+                        this.camera.lookAt(0, 0, 0);
+                    }
+                };
+
+                document.getElementById('play-btn').addEventListener('click', () => {
+                    this.togglePlay();
+                });
+
+                document.getElementById('timeline').addEventListener('click', (e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const percent = (e.clientX - rect.left) / rect.width;
+                    this.seekTo(percent);
+                });
+
+                document.querySelectorAll('.speed-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        const newSpeed = parseFloat(btn.dataset.speed);
+                        console.log('재생 속도 변경:', this.playSpeed, '->', newSpeed);
+                        this.playSpeed = newSpeed;
+                        // 재생 속도 변경 시 즉시 반영되도록 lastUpdateTime 리셋
+                        this.lastUpdateTime = Date.now();
+                    });
+                });
+
+                // ESC 키로 포커스 모드 종료
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && this.focusMode) {
+                        this.exitFocusMode();
+                    }
+                });
+
+                // Reset view
+                document.getElementById('reset-view').addEventListener('click', () => {
+                    this.cameraRotationX = 0.3;
+                    this.cameraRotationY = 0;
+                    this.cameraDistance = this.baseCameraDistance;
+                    this.cameraTarget = null; // 타겟 해제
+                    this.updateCamera();
+                });
+            }
+
+            setupResizableBottom() {
+                const panel = document.getElementById('bottom-panel');
+                const handle = document.getElementById('resize-handle');
+                const minH = 160; // px
+                const maxH = Math.floor(window.innerHeight * 0.8);
+                // Load saved height
+                const saved = localStorage.getItem('bottomPanelHeight');
+                if (saved) panel.style.height = `${parseInt(saved,10)}px`;
+
+                let dragging = false;
+                let startY = 0;
+                let startH = 0;
+
+                handle.addEventListener('mousedown', (e) => {
+                    dragging = true;
+                    startY = e.clientY;
+                    startH = panel.getBoundingClientRect().height;
+                    document.body.style.userSelect = 'none';
+                });
+
+                window.addEventListener('mousemove', (e) => {
+                    if (!dragging) return;
+                    const dy = startY - e.clientY; // drag up increases height
+                    let h = startH + dy;
+                    h = Math.max(minH, Math.min(maxH, h));
+                    panel.style.height = `${h}px`;
+                });
+
+                window.addEventListener('mouseup', () => {
+                    if (!dragging) return;
+                    dragging = false;
+                    document.body.style.userSelect = '';
+                    const h = panel.getBoundingClientRect().height;
+                    localStorage.setItem('bottomPanelHeight', String(Math.round(h)));
+                });
+            }
+
+            updateUI() {
+                if (!this.data) return;
+
+                const m = this.data.metadata;
+                document.getElementById('total-players').textContent = m.players.length;
+                document.getElementById('total-events').textContent = m.total_events;
+                
+                const duration = m.time_range.max - m.time_range.min;
+                const mins = Math.floor(duration / 60);
+                const secs = Math.floor(duration % 60);
+                document.getElementById('game-length').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+                document.getElementById('match-length').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+                
+                const startDate = new Date();
+                startDate.setHours(8, 55, 0);
+                document.getElementById('start-time').textContent = startDate.toLocaleDateString('ko-KR');
+                document.getElementById('match-start-time').textContent = startDate.toLocaleDateString('ko-KR');
+
+                const playerList = document.getElementById('player-list');
+                playerList.innerHTML = '';
+                m.players.forEach(name => {
+                    const stats = m.playerStats[name] || { kills: 0, deaths: 0, team: '' };
+                    const item = document.createElement('div');
+                    item.className = `player-item ${stats.team.toLowerCase()}`;
+                    const kd = stats.deaths > 0 ? (stats.kills / stats.deaths).toFixed(2) : stats.kills.toFixed(2);
+                    item.innerHTML = `
+                        <span>${name}</span>
+                        <span class="player-kd">${stats.kills}/${stats.deaths} (${kd})</span>
+                    `;
+                    item.style.cursor = 'pointer';
+                    item.addEventListener('click', () => {
+                        // 플레이어 클릭 시 해당 플레이어가 참여한 킬 이벤트로 필터링
+                        const playerKills = this.data.events.filter(e => 
+                            (e.attacker.name === name || e.victim.name === name) &&
+                            (e.event_type_lower.includes('kill') || e.event_type_lower.includes('died'))
+                        );
+                        if (playerKills.length > 0) {
+                            this.selectEvent(playerKills[0]);
+                        }
+                    });
+                    playerList.appendChild(item);
+                });
+
+                this.updateEventLog();
+            }
+
+            populateKillPicker() {
+                if (!this.data) return;
+                const select = document.getElementById('kill-select');
+                const goBtn = document.getElementById('go-kill');
+                select.innerHTML = '';
+                const kills = this.data.events.filter(e => (e.event_type_lower||'').includes('kill') || (e.event_type_lower||'').includes('died'));
+                if (kills.length === 0) {
+                    const opt = document.createElement('option');
+                    opt.textContent = 'No kill events';
+                    opt.value = '';
+                    select.appendChild(opt);
+                    goBtn.disabled = true;
+                    return;
+                }
+                goBtn.disabled = false;
+                kills.forEach((e, idx) => {
+                    const opt = document.createElement('option');
+                    const t = this.formatTime(e.game_time);
+                    const label = `${t} ${e.attacker.name || 'Unknown'} → ${e.victim.name || 'Unknown'}`;
+                    opt.value = String(idx);
+                    opt.textContent = label;
+                    select.appendChild(opt);
+                });
+
+                goBtn.onclick = () => {
+                    const i = parseInt(select.value);
+                    if (isNaN(i)) return;
+                    const e = kills[i];
+                    this.selectEvent(e);
+                };
+            }
+
+            populatePlayerPicker() {
+                if (!this.data || !this.playerIndex) return;
+                const select = document.getElementById('player-select');
+                select.innerHTML = '<option value="">Players</option>';
+                Array.from(this.playerIndex.keys()).sort().forEach(name => {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    select.appendChild(opt);
+                });
+
+                select.onchange = () => {
+                    this.selectedPlayer = select.value || null;
+                };
+
+                document.getElementById('follow-toggle').onclick = () => {
+                    if (!this.selectedPlayer) return;
+                    this.followPlayer = !this.followPlayer;
+                    document.getElementById('follow-toggle').textContent = this.followPlayer ? 'Following' : 'Follow';
+                    if (!this.followPlayer) {
+                        this.cameraTarget = null;
+                    }
+                };
+
+                document.getElementById('prev-player-tick').onclick = () => {
+                    this.seekToPlayerTick(-1);
+                };
+                document.getElementById('next-player-tick').onclick = () => {
+                    this.seekToPlayerTick(1);
+                };
+            }
+
+            seekToPlayerTick(direction) {
+                if (!this.selectedPlayer || !this.playerIndex.has(this.selectedPlayer)) return;
+                const arr = this.playerIndex.get(this.selectedPlayer);
+                if (!arr || arr.length === 0) return;
+                // 현재 틱 기준 이전/다음 항목 찾기
+                let idx = arr.findIndex(e => e.tick >= this.data.positions[this.currentTick].tick);
+                if (idx === -1) idx = arr.length - 1;
+                idx = idx + direction;
+                idx = Math.max(0, Math.min(arr.length - 1, idx));
+                const target = arr[idx];
+                const tickIdx = this.findTickByTime(target.time);
+                if (tickIdx !== -1) {
+                    this.currentTick = tickIdx;
+                    if (this.followPlayer) {
+                        this.cameraTarget = { x: target.position[0], y: target.position[2], z: target.position[1] };
+                    }
+                    this.renderTick(this.currentTick);
+                    this.updateTimeDisplay();
+                }
+            }
+
+            updateEventLog() {
+                if (!this.data) return;
+                
+                const eventLog = document.getElementById('event-log');
+                eventLog.innerHTML = '';
+                
+                let eventsToShow = this.data.events;
+                
+                // 포커스 모드인 경우 시간 범위 필터링
+                if (this.focusMode && this.focusTickRange) {
+                    const startT = this.data.positions[this.focusTickRange.startIdx].game_time;
+                    const endT = this.data.positions[this.focusTickRange.endIdx].game_time;
+                    eventsToShow = this.data.events.filter(e => e.game_time >= startT && e.game_time <= endT);
+                } else {
+                    // 현재 시간 기준 ±5초 이내 이벤트 표시
+                    const currentTickData = this.data.positions[this.currentTick];
+                    const currentTime = currentTickData ? currentTickData.game_time : 0;
+                    eventsToShow = this.data.events.filter(e => 
+                        Math.abs(e.game_time - currentTime) < 5
+                    );
+                }
+                
+                eventsToShow.slice(0, 100).forEach((event, idx) => {
+                    const item = document.createElement('div');
+                    let className = 'event-item';
+                    const isSelected = this.selectedEvent && this.selectedEvent.tick === event.tick;
+                    
+                    if (event.event_type_lower.includes('kill') || event.event_type_lower.includes('died')) {
+                        className += ' kill';
+                    } else if (event.event_type_lower.includes('attack')) {
+                        className += ' attack';
+                    } else if (event.event_type_lower.includes('hit')) {
+                        className += ' hit';
+                    }
+                    
+                    if (isSelected) {
+                        className += ' selected';
+                    }
+                    
+                    item.className = className;
+                    
+                    // HTML로 색상 구분하여 표시
+                    const time = this.formatTime(event.game_time);
+                    let html = `<span class="event-time">${time}</span> `;
+                    
+                    if (event.event_type_lower.includes('kill') || event.event_type_lower.includes('died')) {
+                        if (event.attacker.name && event.victim.name) {
+                            html += `<span class="event-action">killed</span> `;
+                            html += `<span class="event-victim">${event.victim.name}</span>`;
+                            if (event.weapon) {
+                                html += ` <span class="event-weapon">with ${event.weapon}</span>`;
+                            }
+                            html = `<span class="event-player">${event.attacker.name}</span> ` + html;
+                        } else {
+                            html += `<span class="event-action">${event.event_type}</span>`;
+                        }
+                    } else if (event.event_type_lower.includes('attack')) {
+                        html += `<span class="event-player">${event.attacker.name || 'Unknown'}</span> `;
+                        html += `<span class="event-action">initiated an Attack</span>`;
+                        if (event.weapon) {
+                            html += ` <span class="event-action">with weapon</span> <span class="event-weapon">${event.weapon}</span>`;
+                        }
+                    } else {
+                        html += `<span class="event-action">${event.event_type}</span>`;
+                    }
+                    
+                    item.innerHTML = html;
+                    
+                    // 클릭 이벤트 추가
+                    item.addEventListener('click', () => {
+                        this.selectEvent(event);
+                    });
+                    
+                    eventLog.appendChild(item);
+                });
+                
+                // 스크롤을 맨 위로
+                eventLog.scrollTop = 0;
+            }
+
+            selectEvent(event) {
+                // 기존 선택 해제
+                if (this.selectedEvent) {
+                    document.querySelectorAll('.event-item.selected').forEach(item => {
+                        item.classList.remove('selected');
+                    });
+                }
+                
+                this.selectedEvent = event;
+                
+                // 포커스 모드 활성화 (이벤트 전후 30틱)
+                this.focusMode = true;
+                const centerIdx = this.findTickByTime(event.game_time);
+                const startIdx = Math.max(0, centerIdx - 30);
+                const endIdx = Math.min(this.data.positions.length - 1, centerIdx + 30);
+                this.focusTickRange = { startIdx, endIdx, centerIdx };
+                this.focusTimeRange = {
+                    start: this.data.positions[startIdx].game_time,
+                    end: this.data.positions[endIdx].game_time
+                };
+                
+                // 해당 시간으로 이동
+                const targetTick = this.findTickByTime(event.game_time);
+                if (targetTick !== -1) {
+                    this.currentTick = targetTick;
+                    this.renderTick(this.currentTick);
+                    this.updateTimeDisplay();
+                }
+                
+                // 공격자를 시뮬레이션 중앙에 배치
+                if (event.attacker.position[0] !== null && this.mapBounds) {
+                    const attackerPos = {
+                        x: event.attacker.position[0],
+                        y: event.attacker.position[2],
+                        z: event.attacker.position[1]
+                    };
+                    
+                    // 카메라를 공격자 위치를 중심으로 조정
+                    const bounds = this.mapBounds;
+                    const maxDim = Math.max(bounds.width, bounds.height, bounds.depth);
+                    this.cameraDistance = maxDim * 0.8;
+                    
+                    // 공격자 위치를 중심으로 카메라 배치
+                    this.cameraRotationX = 0.4;
+                    this.cameraRotationY = Math.PI / 4; // 45도 각도
+                    
+                    // 카메라 타겟을 공격자 위치로 설정
+                    this.cameraTarget = attackerPos;
+                    
+                    // 카메라 업데이트
+                    this.updateCameraToTarget();
+                }
+                
+                // 이벤트 로그 업데이트
+                this.updateEventLog();
+                
+                // 포커스 모드 표시
+                this.showFocusModeIndicator();
+                // Aim Trace 탭이 열려있다면 갱신
+                const activeTabEl = document.querySelector('.tab-btn.active');
+                const activeTab = activeTabEl ? activeTabEl.getAttribute('data-tab') : null;
+                if (activeTab === 'aim') this.renderAimTrace();
+            }
+            
+            updateCameraToTarget() {
+                if (!this.cameraTarget || !this.mapBounds) return;
+                
+                const target = this.cameraTarget;
+                const x = target.x + this.cameraDistance * Math.sin(this.cameraRotationY) * Math.cos(this.cameraRotationX);
+                const y = target.y + this.cameraDistance * Math.sin(this.cameraRotationX);
+                const z = target.z + this.cameraDistance * Math.cos(this.cameraRotationY) * Math.cos(this.cameraRotationX);
+                
+                this.camera.position.set(x, y, z);
+                this.camera.lookAt(target.x, target.y, target.z);
+            }
+
+            findTickByTime(targetTime) {
+                if (!this.data) return -1;
+                
+                let closestTick = 0;
+                let minDiff = Infinity;
+                
+                this.data.positions.forEach((pos, idx) => {
+                    const diff = Math.abs(pos.game_time - targetTime);
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        closestTick = idx;
+                    }
+                });
+                
+                return closestTick;
+            }
+
+            showFocusModeIndicator() {
+                // 포커스 모드 인디케이터 표시
+                const focusControls = document.getElementById('focus-controls');
+                const timeDisplay = document.getElementById('time-display');
+                
+                if (this.focusMode && this.focusTimeRange) {
+                    focusControls.classList.add('show');
+                    const range = this.focusTimeRange.end - this.focusTimeRange.start;
+                    const info = document.getElementById('focus-info');
+                    info.textContent = `Focus: ${this.formatTime(this.focusTimeRange.start)} - ${this.formatTime(this.focusTimeRange.end)} (${this.formatTime(range)})`;
+                    timeDisplay.style.color = '#4a90e2';
+                    timeDisplay.style.fontWeight = 'bold';
+                } else {
+                    focusControls.classList.remove('show');
+                    timeDisplay.style.color = '';
+                    timeDisplay.style.fontWeight = '';
+                }
+            }
+
+            exitFocusMode() {
+                this.focusMode = false;
+                this.focusTimeRange = null;
+                this.selectedEvent = null;
+                this.cameraTarget = null; // 타겟 해제
+                this.updateCamera();
+                this.showFocusModeIndicator();
+                this.updateEventLog();
+            }
+
+            renderTick(tickIndex) {
+                if (!this.data || !this.data.positions) return;
+
+                const tickData = this.data.positions[tickIndex];
+                if (!tickData) return;
+
+                // 기존 오브젝트 제거
+                this.playerObjects.forEach(obj => this.scene.remove(obj));
+                this.playerLabels.forEach(obj => this.scene.remove(obj));
+                this.playerObjects.clear();
+                this.playerLabels.clear();
+
+                // 플레이어 렌더링
+                tickData.players.forEach(player => {
+                    const isCT = player.team === 'CT';
+                    const color = isCT ? 0x5b9bd5 : 0xff6b6b;
+                    
+                    // CT는 원형, T는 삼각형
+                    let geometry;
+                    if (isCT) {
+                        geometry = new THREE.SphereGeometry(12, 16, 16);
+                    } else {
+                        geometry = new THREE.ConeGeometry(12, 24, 3);
+                        geometry.rotateX(-Math.PI / 2);
+                    }
+                    
+                    const material = new THREE.MeshPhongMaterial({ 
+                        color: color,
+                        emissive: color,
+                        emissiveIntensity: 0.4
+                    });
+                    
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(player.position[0], player.position[2], player.position[1]);
+                    this.scene.add(mesh);
+                    this.playerObjects.set(player.name, mesh);
+
+                    // 플레이어 ID 라벨 (크게)
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = 512;
+                    canvas.height = 96;
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // 배경 테두리
+                    ctx.strokeStyle = isCT ? '#5b9bd5' : '#ff6b6b';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+                    
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 36px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(player.name, canvas.width / 2, canvas.height / 2 + 12);
+                    
+                    const texture = new THREE.CanvasTexture(canvas);
+                    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
+                        map: texture,
+                        transparent: true,
+                        depthTest: false
+                    }));
+                    sprite.position.set(player.position[0], player.position[2] + 35, player.position[1]);
+                    sprite.scale.set(150, 30, 1);
+                    this.scene.add(sprite);
+                    this.playerLabels.set(player.name, sprite);
+                    
+                    // 트레일 업데이트
+                    this.updateTrail(player.name, player.position, color);
+                });
+
+                this.renderEvents(tickData.game_time);
+                this.updateEventLog();
+            }
+
+            updateTrail(playerName, position, color) {
+                if (!this.playerTrails.has(playerName)) {
+                    const trailGeometry = new THREE.BufferGeometry();
+                    const trailMaterial = new THREE.LineBasicMaterial({ 
+                        color: color,
+                        opacity: 0.4,
+                        transparent: true,
+                        linewidth: 2
+                    });
+                    const trail = new THREE.Line(trailGeometry, trailMaterial);
+                    this.scene.add(trail);
+                    this.playerTrails.set(playerName, {
+                        line: trail,
+                        points: []
+                    });
+                }
+
+                const trail = this.playerTrails.get(playerName);
+                trail.points.push(new THREE.Vector3(position[0], position[2], position[1]));
+                
+                if (trail.points.length > 100) {
+                    trail.points.shift();
+                }
+
+                trail.line.geometry.setFromPoints(trail.points);
+            }
+
+            renderEvents(gameTime) {
+                this.eventMarkers.forEach(m => this.scene.remove(m));
+                this.eventMarkers = [];
+
+                if (!this.data || !this.data.events) return;
+
+                this.data.events.forEach(event => {
+                    const timeDiff = Math.abs(event.game_time - gameTime);
+                    // 정확히 해당 틱에만 표시 (0.05초 이내, 약 3틱)
+                    if (timeDiff < 0.05 && event.attacker.position[0] !== null) {
+                        const geometry = new THREE.ConeGeometry(15, 50, 8);
+                        const material = new THREE.MeshPhongMaterial({ 
+                            color: 0xff0000,
+                            emissive: 0xff0000,
+                            emissiveIntensity: 0.6
+                        });
+                        const marker = new THREE.Mesh(geometry, material);
+                        marker.position.set(
+                            event.attacker.position[0],
+                            event.attacker.position[2] + 25,
+                            event.attacker.position[1]
+                        );
+                        marker.rotation.x = -Math.PI / 2;
+                        this.scene.add(marker);
+                        this.eventMarkers.push(marker);
+
+                        if (event.victim.position[0] !== null) {
+                            const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                                new THREE.Vector3(
+                                    event.attacker.position[0],
+                                    event.attacker.position[2],
+                                    event.attacker.position[1]
+                                ),
+                                new THREE.Vector3(
+                                    event.victim.position[0],
+                                    event.victim.position[2],
+                                    event.victim.position[1]
+                                )
+                            ]);
+                            const lineMaterial = new THREE.LineBasicMaterial({ 
+                                color: 0xff6b6b,
+                                opacity: 0.8,
+                                transparent: true,
+                                linewidth: 2
+                            });
+                            const line = new THREE.Line(lineGeometry, lineMaterial);
+                            this.scene.add(line);
+                            this.eventMarkers.push(line);
+
+                            // Victim 'KILLED' label with HEADSHOT and fadeout
+                            // 정확히 해당 틱에만 표시하고 2초간 페이드아웃
+                            if (timeDiff < 2.0) {
+                                const fadeStart = 1.5; // 1.5초 후부터 페이드 시작
+                                const fadeEnd = 2.0; // 2초에 완전히 사라짐
+                                let opacity = 1.0;
+                                
+                                if (timeDiff > fadeStart) {
+                                    opacity = 1.0 - ((timeDiff - fadeStart) / (fadeEnd - fadeStart));
+                                    opacity = Math.max(0, opacity);
+                                }
+                                
+                                if (opacity > 0) {
+                                    const canvas = document.createElement('canvas');
+                                    const ctx = canvas.getContext('2d');
+                                    canvas.width = 320;
+                                    canvas.height = 80;
+                                    
+                                    // 배경 (투명도 적용)
+                                    ctx.fillStyle = `rgba(0, 0, 0, ${0.85 * opacity})`;
+                                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                                    
+                                    // 테두리
+                                    ctx.strokeStyle = `rgba(255, 107, 107, ${opacity})`;
+                                    ctx.lineWidth = 3;
+                                    ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+                                    
+                                    // KILLED 텍스트
+                                    ctx.fillStyle = `rgba(255, 107, 107, ${opacity})`;
+                                    ctx.font = 'bold 32px Arial';
+                                    ctx.textAlign = 'center';
+                                    ctx.fillText('KILLED', canvas.width / 2, 35);
+                                    
+                                    // HEADSHOT 표시 (헤드샷인 경우)
+                                    if (event.headshot) {
+                                        ctx.fillStyle = `rgba(255, 215, 0, ${opacity})`;
+                                        ctx.font = 'bold 24px Arial';
+                                        ctx.fillText('HEADSHOT', canvas.width / 2, 60);
+                                    }
+                                    
+                                    const tex = new THREE.CanvasTexture(canvas);
+                                    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
+                                        map: tex, 
+                                        transparent: true,
+                                        opacity: opacity
+                                    }));
+                                    sprite.position.set(
+                                        event.victim.position[0],
+                                        event.victim.position[2] + 50,
+                                        event.victim.position[1]
+                                    );
+                                    sprite.scale.set(160, 40, 1);
+                                    this.scene.add(sprite);
+                                    this.eventMarkers.push(sprite);
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            togglePlay() {
+                this.isPlaying = !this.isPlaying;
+                document.getElementById('play-btn').textContent = this.isPlaying ? '⏸' : '▶';
+            }
+
+            seekTo(percent) {
+                if (!this.data) return;
+                const maxTick = this.data.positions.length - 1;
+                this.currentTick = Math.floor(percent * maxTick);
+                this.renderTick(this.currentTick);
+                this.updateTimeDisplay();
+            }
+
+            updateTimeDisplay() {
+                if (!this.data) return;
+                
+                const tickData = this.data.positions[this.currentTick];
+                if (tickData) {
+                    const m = this.data.metadata;
+                    const currentTime = tickData.game_time - m.time_range.min;
+                    const totalTime = m.time_range.max - m.time_range.min;
+                    
+                    document.getElementById('time-display').textContent = 
+                        `${this.formatTime(currentTime)} / ${this.formatTime(totalTime)}`;
+                    
+                    const progress = (this.currentTick / (this.data.positions.length - 1)) * 100;
+                    document.getElementById('timeline-progress').style.width = `${progress}%`;
+                }
+            }
+
+            formatTime(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                const ms = Math.floor((seconds % 1) * 1000);
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                if (this.updateCamera) {
+                    this.updateCamera();
+                }
+
+                if (this.isPlaying && this.data) {
+                    const now = Date.now();
+                    if (!this.lastUpdateTime) {
+                        this.lastUpdateTime = now;
+                    }
+                    
+                    // 틱 간 시간 계산 (실제 게임 틱 속도 기반)
+                    const tickData = this.data.positions[this.currentTick];
+                    const nextTickData = this.data.positions[this.currentTick + 1];
+                    
+                    let shouldAdvance = false;
+                    let delta = now - this.lastUpdateTime;
+                    
+                    if (tickData && nextTickData) {
+                        const tickInterval = (nextTickData.game_time - tickData.game_time) * 1000; // ms
+                        if (tickInterval > 0 && !Number.isNaN(tickInterval)) {
+                            // playSpeed 적용: 1x면 원래 속도, 0.5x면 2배 느리게, 2x면 2배 빠르게
+                            const targetInterval = tickInterval / this.playSpeed;
+                            
+                            // playSpeed에 따라 틱 진행 속도 조절
+                            shouldAdvance = delta >= targetInterval;
+                            
+                            // 빠른 속도일 때 여러 틱을 한 번에 건너뛰기
+                            if (shouldAdvance && this.playSpeed > 1) {
+                                const ticksToSkip = Math.floor(delta / targetInterval);
+                                if (ticksToSkip > 1) {
+                                    // 여러 틱 건너뛰기 (최대 10틱)
+                                    const skipCount = Math.min(ticksToSkip - 1, 10);
+                                    this.currentTick += skipCount;
+                                    shouldAdvance = false; // 이미 증가했으므로 추가 증가 방지
+                                }
+                            }
+                            
+                            // 디버깅 (가끔만 출력)
+                            if (this.currentTick % 100 === 0) {
+                                console.log('재생 속도:', this.playSpeed + 'x', '틱 간격:', tickInterval.toFixed(2) + 'ms', '목표 간격:', targetInterval.toFixed(2) + 'ms', '실제 delta:', delta.toFixed(2) + 'ms');
+                            }
+                        } else {
+                            // 틱 간격이 없거나 잘못된 경우 기본 간격 사용
+                            const baseInterval = 16.67 / this.playSpeed; // 기본 60fps 기준 (16.67ms)
+                            shouldAdvance = delta >= baseInterval;
+                        }
+                    } else {
+                        // 다음 틱 데이터가 없으면 기본 간격 사용
+                        const baseInterval = 16.67 / this.playSpeed; // 기본 60fps 기준 (16.67ms)
+                        shouldAdvance = delta >= baseInterval;
+                    }
+                    
+                    if (shouldAdvance) {
+                        this.currentTick += 1;
+                        
+                        // 포커스 모드인 경우 범위 체크 (틱 기반)
+                        if (this.focusMode && this.focusTickRange) {
+                            if (this.currentTick > this.focusTickRange.endIdx) {
+                                this.currentTick = this.focusTickRange.startIdx;
+                                this.isPlaying = false;
+                                document.getElementById('play-btn').textContent = '▶';
+                            }
+                        }
+                        
+                        if (this.currentTick >= this.data.positions.length) {
+                            this.currentTick = this.data.positions.length - 1;
+                            this.isPlaying = false;
+                            document.getElementById('play-btn').textContent = '▶';
+                        } else {
+                            // Follow selected player if enabled
+                            if (this.followPlayer && this.selectedPlayer && this.playerIndex.has(this.selectedPlayer)) {
+                                const arr = this.playerIndex.get(this.selectedPlayer);
+                                const tick = this.data.positions[this.currentTick].tick;
+                                const entry = arr.find(e => e.tick === tick);
+                                if (entry) {
+                                    this.cameraTarget = { x: entry.position[0], y: entry.position[2], z: entry.position[1] };
+                                }
+                            }
+                            this.renderTick(this.currentTick);
+                            this.updateTimeDisplay();
+                            // Aim trace 실시간 업데이트 (탭이 열려있을 때)
+                            const activeTabEl3 = document.querySelector('.tab-btn.active');
+                            const activeTab3 = activeTabEl3 ? activeTabEl3.getAttribute('data-tab') : null;
+                            if (activeTab3 === 'aim') this.renderAimTrace();
+                        }
+                        this.lastUpdateTime = now;
+                    }
+                }
+
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            new CombatSimulation();
+        });
+    </script>
+</body>
+</html>
+

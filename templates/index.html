@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS:GO Combat Simulation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e27;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #container {
+            display: flex;
+            height: 100vh;
+        }
+
+        #sidebar {
+            width: 300px;
+            background: #1a1f3a;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #2a2f4a;
+        }
+
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            background: #0a0e27;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(26, 31, 58, 0.95);
+            padding: 15px 20px;
+            border-top: 1px solid #2a2f4a;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .play-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #4a90e2;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .play-btn:hover {
+            background: #5aa0f2;
+        }
+
+        .timeline {
+            flex: 1;
+            height: 6px;
+            background: #2a2f4a;
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .timeline-progress {
+            height: 100%;
+            background: #4a90e2;
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.1s;
+        }
+
+        .time-display {
+            min-width: 80px;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .speed-btn {
+            padding: 5px 10px;
+            background: #2a2f4a;
+            border: 1px solid #3a3f5a;
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .speed-btn.active {
+            background: #4a90e2;
+        }
+
+        .sidebar-section {
+            margin-bottom: 20px;
+        }
+
+        .sidebar-section h3 {
+            font-size: 14px;
+            color: #8a8fa5;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #2a2f4a;
+            font-size: 13px;
+        }
+
+        .stat-label {
+            color: #8a8fa5;
+        }
+
+        .stat-value {
+            color: #fff;
+            font-weight: 500;
+        }
+
+        .player-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .player-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            background: #2a2f4a;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .player-item:hover {
+            background: #3a3f5a;
+        }
+
+        .player-item.ct {
+            border-left: 3px solid #5b9bd5;
+        }
+
+        .player-item.terrorist {
+            border-left: 3px solid #ff6b6b;
+        }
+
+        .event-log {
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .event-item {
+            padding: 5px;
+            margin-bottom: 3px;
+            background: #2a2f4a;
+            border-radius: 3px;
+            color: #8a8fa5;
+        }
+
+        .event-item.kill {
+            border-left: 3px solid #ff6b6b;
+            color: #ff6b6b;
+        }
+
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(26, 31, 58, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            min-width: 200px;
+            display: none;
+        }
+
+        #info-panel.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="sidebar">
+            <div class="sidebar-section">
+                <h3>Match Info</h3>
+                <div class="stat-item">
+                    <span class="stat-label">Total Ticks:</span>
+                    <span class="stat-value" id="total-ticks">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Events:</span>
+                    <span class="stat-value" id="total-events">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Duration:</span>
+                    <span class="stat-value" id="duration">-</span>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Players</h3>
+                <div class="player-list" id="player-list"></div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Events</h3>
+                <div class="event-log" id="event-log"></div>
+            </div>
+        </div>
+
+        <div id="canvas-container">
+            <canvas id="canvas"></canvas>
+            <div id="info-panel">
+                <div id="info-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="controls">
+        <div class="control-group">
+            <button class="play-btn" id="play-btn">▶</button>
+            <div class="timeline" id="timeline">
+                <div class="timeline-progress" id="timeline-progress"></div>
+            </div>
+            <div class="time-display" id="time-display">00:00 / 00:00</div>
+            <div class="speed-control">
+                <button class="speed-btn" data-speed="0.5">0.5x</button>
+                <button class="speed-btn active" data-speed="1">1x</button>
+                <button class="speed-btn" data-speed="2">2x</button>
+                <button class="speed-btn" data-speed="3">3x</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // OrbitControls가 제대로 로드되지 않는 경우를 대비한 폴백
+        if (typeof THREE.OrbitControls === 'undefined') {
+            // 간단한 OrbitControls 폴백은 simulation.js에서 처리
+            console.log('OrbitControls not found, using fallback controls');
+        }
+    </script>
+    <script src="/static/simulation.js"></script>
+</body>
+</html>
+

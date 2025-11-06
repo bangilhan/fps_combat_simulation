@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS:GO Combat Simulation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e27;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #container {
+            display: flex;
+            height: 100vh;
+        }
+
+        #sidebar {
+            width: 300px;
+            background: #1a1f3a;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #2a2f4a;
+        }
+
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            background: #0a0e27;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(26, 31, 58, 0.95);
+            padding: 15px 20px;
+            border-top: 1px solid #2a2f4a;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .play-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #4a90e2;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .play-btn:hover {
+            background: #5aa0f2;
+        }
+
+        .timeline {
+            flex: 1;
+            height: 6px;
+            background: #2a2f4a;
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .timeline-progress {
+            height: 100%;
+            background: #4a90e2;
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.1s;
+        }
+
+        .time-display {
+            min-width: 80px;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .speed-btn {
+            padding: 5px 10px;
+            background: #2a2f4a;
+            border: 1px solid #3a3f5a;
+            color: white;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .speed-btn.active {
+            background: #4a90e2;
+        }
+
+        .sidebar-section {
+            margin-bottom: 20px;
+        }
+
+        .sidebar-section h3 {
+            font-size: 14px;
+            color: #8a8fa5;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #2a2f4a;
+            font-size: 13px;
+        }
+
+        .stat-label {
+            color: #8a8fa5;
+        }
+
+        .stat-value {
+            color: #fff;
+            font-weight: 500;
+        }
+
+        .player-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .player-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            background: #2a2f4a;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .player-item.ct {
+            border-left: 3px solid #5b9bd5;
+        }
+
+        .player-item.terrorist {
+            border-left: 3px solid #ff6b6b;
+        }
+
+        .event-log {
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .event-item {
+            padding: 5px;
+            margin-bottom: 3px;
+            background: #2a2f4a;
+            border-radius: 3px;
+            color: #8a8fa5;
+        }
+
+        .event-item.kill {
+            border-left: 3px solid #ff6b6b;
+            color: #ff6b6b;
+        }
+
+        #file-input {
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #2a2f4a;
+            border-radius: 4px;
+        }
+
+        #file-input input {
+            color: white;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="sidebar">
+            <div class="sidebar-section">
+                <h3>파일 로드</h3>
+                <div id="file-input">
+                    <input type="file" id="csv-file" accept=".csv" />
+                    <div id="loading" style="display: none;">CSV 파일 처리 중...</div>
+                </div>
+            </div>
+            <div class="sidebar-section">
+                <h3>Match Info</h3>
+                <div class="stat-item">
+                    <span class="stat-label">Total Ticks:</span>
+                    <span class="stat-value" id="total-ticks">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Events:</span>
+                    <span class="stat-value" id="total-events">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Duration:</span>
+                    <span class="stat-value" id="duration">-</span>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Players</h3>
+                <div class="player-list" id="player-list"></div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Events</h3>
+                <div class="event-log" id="event-log"></div>
+            </div>
+        </div>
+
+        <div id="canvas-container">
+            <canvas id="canvas"></canvas>
+        </div>
+    </div>
+
+    <div id="controls">
+        <div class="control-group">
+            <button class="play-btn" id="play-btn">▶</button>
+            <div class="timeline" id="timeline">
+                <div class="timeline-progress" id="timeline-progress"></div>
+            </div>
+            <div class="time-display" id="time-display">00:00 / 00:00</div>
+            <div class="speed-control">
+                <button class="speed-btn" data-speed="0.5">0.5x</button>
+                <button class="speed-btn active" data-speed="1">1x</button>
+                <button class="speed-btn" data-speed="2">2x</button>
+                <button class="speed-btn" data-speed="3">3x</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script>
+        /**
+         * CS:GO 3D 시뮬레이션 - 브라우저에서 직접 CSV 처리
+         */
+        class CombatSimulation {
+            constructor() {
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                
+                this.data = null;
+                this.currentTick = 0;
+                this.isPlaying = false;
+                this.playSpeed = 1;
+                this.animationFrame = null;
+                
+                this.playerObjects = new Map();
+                this.playerLabels = new Map();
+                this.playerTrails = new Map();
+                this.eventMarkers = [];
+                
+                this.init();
+            }
+
+            init() {
+                this.setupScene();
+                this.setupControls();
+                this.setupFileInput();
+                this.animate();
+            }
+
+            setupFileInput() {
+                const fileInput = document.getElementById('csv-file');
+                fileInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        this.loadCSV(file);
+                    }
+                });
+            }
+
+            async loadCSV(file) {
+                const loading = document.getElementById('loading');
+                loading.style.display = 'block';
+                
+                return new Promise((resolve) => {
+                    Papa.parse(file, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: (results) => {
+                            console.log('CSV 파싱 완료:', results.data.length, '줄');
+                            this.processData(results.data);
+                            loading.style.display = 'none';
+                            resolve();
+                        },
+                        error: (error) => {
+                            console.error('CSV 파싱 오류:', error);
+                            loading.style.display = 'none';
+                            alert('CSV 파일을 읽는 중 오류가 발생했습니다.');
+                        }
+                    });
+                });
+            }
+
+            processData(rows) {
+                const positions = [];
+                const events = [];
+                
+                let tickData = {};
+                let currentTick = null;
+                
+                rows.forEach((row, idx) => {
+                    if (idx % 10000 === 0 && idx > 0) {
+                        console.log(`처리 중... ${idx}줄`);
+                    }
+                    
+                    const tickStr = row.tick?.trim();
+                    if (!tickStr) return;
+                    
+                    const tick = parseInt(tickStr);
+                    const gameTime = parseFloat(row.game_time || 0);
+                    
+                    if (currentTick !== tick && currentTick !== null && tickData.players?.length) {
+                        positions.push({
+                            tick: currentTick,
+                            game_time: tickData.game_time || 0,
+                            players: tickData.players || []
+                        });
+                        tickData = { players: [] };
+                    }
+                    
+                    currentTick = tick;
+                    tickData.game_time = gameTime;
+                    
+                    // 플레이어 위치
+                    const x = row.X?.trim();
+                    const y = row.Y?.trim();
+                    const z = row.Z?.trim();
+                    if (x && y && z && row.name?.trim()) {
+                        tickData.players = tickData.players || [];
+                        tickData.players.push({
+                            name: row.name.trim(),
+                            team: row.team_name?.trim() || '',
+                            position: [parseFloat(x), parseFloat(z), parseFloat(y)],
+                            health: parseFloat(row.health || 100),
+                            round: parseInt(row.round || 1)
+                        });
+                    }
+                    
+                    // 이벤트
+                    if (row.event?.trim()) {
+                        events.push({
+                            tick: tick,
+                            game_time: gameTime,
+                            event_type: row.event.trim(),
+                            attacker: {
+                                name: row.attacker_name?.trim() || null,
+                                team: row.attacker_team_name?.trim() || null,
+                                position: [
+                                    row.attacker_X?.trim() ? parseFloat(row.attacker_X) : null,
+                                    row.attacker_Z?.trim() ? parseFloat(row.attacker_Z) : null,
+                                    row.attacker_Y?.trim() ? parseFloat(row.attacker_Y) : null
+                                ]
+                            },
+                            victim: {
+                                name: row.victim_name?.trim() || null,
+                                team: row.victim_team_name?.trim() || null,
+                                position: [
+                                    row.victim_X?.trim() ? parseFloat(row.victim_X) : null,
+                                    row.victim_Z?.trim() ? parseFloat(row.victim_Z) : null,
+                                    row.victim_Y?.trim() ? parseFloat(row.victim_Y) : null
+                                ]
+                            },
+                            weapon: row.weapon?.trim() || null
+                        });
+                    }
+                });
+                
+                // 마지막 틱
+                if (currentTick !== null && tickData.players?.length) {
+                    positions.push({
+                        tick: currentTick,
+                        game_time: tickData.game_time || 0,
+                        players: tickData.players || []
+                    });
+                }
+                
+                // 메타데이터
+                const gameTimes = positions.map(p => p.game_time).filter(t => t);
+                const ticks = positions.map(p => p.tick).filter(t => t);
+                const players = new Set();
+                positions.forEach(p => {
+                    p.players.forEach(pl => {
+                        if (pl.name) players.add(pl.name);
+                    });
+                });
+                
+                this.data = {
+                    metadata: {
+                        total_ticks: positions.length,
+                        total_events: events.length,
+                        time_range: {
+                            min: gameTimes.length ? Math.min(...gameTimes) : 0,
+                            max: gameTimes.length ? Math.max(...gameTimes) : 0
+                        },
+                        tick_range: {
+                            min: ticks.length ? Math.min(...ticks) : 0,
+                            max: ticks.length ? Math.max(...ticks) : 0
+                        },
+                        players: Array.from(players).sort(),
+                        teams: ['CT', 'TERRORIST']
+                    },
+                    positions: positions,
+                    events: events
+                };
+                
+                console.log('데이터 처리 완료:', this.data.metadata);
+                this.updateUI();
+                this.renderTick(0);
+            }
+
+            setupScene() {
+                const container = document.getElementById('canvas-container');
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x0a0e27);
+                this.scene.fog = new THREE.Fog(0x0a0e27, 1000, 5000);
+
+                this.camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 10000);
+                this.camera.position.set(0, 500, 1000);
+                this.camera.lookAt(0, 0, 0);
+
+                this.renderer = new THREE.WebGLRenderer({ 
+                    canvas: document.getElementById('canvas'),
+                    antialias: true 
+                });
+                this.renderer.setSize(width, height);
+                this.renderer.shadowMap.enabled = true;
+
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                this.scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(500, 1000, 500);
+                directionalLight.castShadow = true;
+                this.scene.add(directionalLight);
+
+                const gridHelper = new THREE.GridHelper(5000, 50, 0x2a2f4a, 0x1a1f3a);
+                this.scene.add(gridHelper);
+
+                window.addEventListener('resize', () => {
+                    const width = container.clientWidth;
+                    const height = container.clientHeight;
+                    this.camera.aspect = width / height;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(width, height);
+                });
+            }
+
+            setupControls() {
+                let isMouseDown = false;
+                let mouseX = 0, mouseY = 0;
+                let cameraRotationX = 0;
+                let cameraRotationY = 0;
+                let cameraDistance = 1500;
+
+                const canvas = document.getElementById('canvas');
+                
+                canvas.addEventListener('mousedown', (e) => {
+                    isMouseDown = true;
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                });
+
+                canvas.addEventListener('mousemove', (e) => {
+                    if (isMouseDown) {
+                        const deltaX = e.clientX - mouseX;
+                        const deltaY = e.clientY - mouseY;
+                        cameraRotationY += deltaX * 0.01;
+                        cameraRotationX += deltaY * 0.01;
+                        mouseX = e.clientX;
+                        mouseY = e.clientY;
+                    }
+                });
+
+                canvas.addEventListener('mouseup', () => {
+                    isMouseDown = false;
+                });
+
+                canvas.addEventListener('wheel', (e) => {
+                    cameraDistance += e.deltaY * 5;
+                    cameraDistance = Math.max(100, Math.min(5000, cameraDistance));
+                    e.preventDefault();
+                });
+
+                this.updateCamera = () => {
+                    const x = cameraDistance * Math.sin(cameraRotationY) * Math.cos(cameraRotationX);
+                    const y = cameraDistance * Math.sin(cameraRotationX);
+                    const z = cameraDistance * Math.cos(cameraRotationY) * Math.cos(cameraRotationX);
+                    this.camera.position.set(x, y, z);
+                    this.camera.lookAt(0, 0, 0);
+                };
+
+                // UI 컨트롤
+                document.getElementById('play-btn').addEventListener('click', () => {
+                    this.togglePlay();
+                });
+
+                document.getElementById('timeline').addEventListener('click', (e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const percent = (e.clientX - rect.left) / rect.width;
+                    this.seekTo(percent);
+                });
+
+                document.querySelectorAll('.speed-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        this.playSpeed = parseFloat(btn.dataset.speed);
+                    });
+                });
+            }
+
+            updateUI() {
+                if (!this.data) return;
+
+                const m = this.data.metadata;
+                document.getElementById('total-ticks').textContent = m.total_ticks;
+                document.getElementById('total-events').textContent = m.total_events;
+                
+                const duration = m.time_range.max - m.time_range.min;
+                const mins = Math.floor(duration / 60);
+                const secs = Math.floor(duration % 60);
+                document.getElementById('duration').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+                const playerList = document.getElementById('player-list');
+                playerList.innerHTML = '';
+                m.players.forEach(name => {
+                    const item = document.createElement('div');
+                    item.className = 'player-item';
+                    item.textContent = name;
+                    playerList.appendChild(item);
+                });
+
+                const eventLog = document.getElementById('event-log');
+                eventLog.innerHTML = '';
+                this.data.events.slice(0, 20).forEach(event => {
+                    const item = document.createElement('div');
+                    item.className = 'event-item kill';
+                    const time = this.formatTime(event.game_time);
+                    const text = event.attacker.name && event.victim.name 
+                        ? `${time} - ${event.attacker.name} killed ${event.victim.name}`
+                        : `${time} - ${event.event_type}`;
+                    item.textContent = text;
+                    eventLog.appendChild(item);
+                });
+            }
+
+            renderTick(tickIndex) {
+                if (!this.data || !this.data.positions) return;
+
+                const tickData = this.data.positions[tickIndex];
+                if (!tickData) return;
+
+                // 기존 오브젝트 제거
+                this.playerObjects.forEach(obj => this.scene.remove(obj));
+                this.playerLabels.forEach(obj => this.scene.remove(obj));
+                this.playerObjects.clear();
+                this.playerLabels.clear();
+
+                // 플레이어 렌더링
+                tickData.players.forEach(player => {
+                    const color = player.team === 'CT' ? 0x5b9bd5 : 0xff6b6b;
+                    const geometry = new THREE.SphereGeometry(15, 16, 16);
+                    const material = new THREE.MeshPhongMaterial({ 
+                        color: color,
+                        emissive: color,
+                        emissiveIntensity: 0.3
+                    });
+                    
+                    const sphere = new THREE.Mesh(geometry, material);
+                    sphere.position.set(player.position[0], player.position[2], player.position[1]);
+                    this.scene.add(sphere);
+                    this.playerObjects.set(player.name, sphere);
+
+                    // 라벨
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = 256;
+                    canvas.height = 64;
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(player.name, canvas.width / 2, canvas.height / 2 + 8);
+                    
+                    const texture = new THREE.CanvasTexture(canvas);
+                    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture }));
+                    sprite.position.set(player.position[0], player.position[2] + 30, player.position[1]);
+                    sprite.scale.set(100, 25, 1);
+                    this.scene.add(sprite);
+                    this.playerLabels.set(player.name, sprite);
+                });
+
+                this.renderEvents(tickData.game_time);
+            }
+
+            renderEvents(gameTime) {
+                this.eventMarkers.forEach(m => this.scene.remove(m));
+                this.eventMarkers = [];
+
+                if (!this.data || !this.data.events) return;
+
+                this.data.events.forEach(event => {
+                    const timeDiff = Math.abs(event.game_time - gameTime);
+                    if (timeDiff < 2.0 && event.attacker.position[0] !== null) {
+                        const geometry = new THREE.ConeGeometry(20, 60, 8);
+                        const material = new THREE.MeshPhongMaterial({ 
+                            color: 0xff0000,
+                            emissive: 0xff0000,
+                            emissiveIntensity: 0.5
+                        });
+                        const marker = new THREE.Mesh(geometry, material);
+                        marker.position.set(
+                            event.attacker.position[0],
+                            event.attacker.position[2] + 30,
+                            event.attacker.position[1]
+                        );
+                        marker.rotation.x = -Math.PI / 2;
+                        this.scene.add(marker);
+                        this.eventMarkers.push(marker);
+
+                        if (event.victim.position[0] !== null) {
+                            const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                                new THREE.Vector3(
+                                    event.attacker.position[0],
+                                    event.attacker.position[2],
+                                    event.attacker.position[1]
+                                ),
+                                new THREE.Vector3(
+                                    event.victim.position[0],
+                                    event.victim.position[2],
+                                    event.victim.position[1]
+                                )
+                            ]);
+                            const lineMaterial = new THREE.LineBasicMaterial({ 
+                                color: 0xff6b6b,
+                                opacity: 0.7,
+                                transparent: true
+                            });
+                            const line = new THREE.Line(lineGeometry, lineMaterial);
+                            this.scene.add(line);
+                            this.eventMarkers.push(line);
+                        }
+                    }
+                });
+            }
+
+            togglePlay() {
+                this.isPlaying = !this.isPlaying;
+                document.getElementById('play-btn').textContent = this.isPlaying ? '⏸' : '▶';
+            }
+
+            seekTo(percent) {
+                if (!this.data) return;
+                const maxTick = this.data.positions.length - 1;
+                this.currentTick = Math.floor(percent * maxTick);
+                this.renderTick(this.currentTick);
+                this.updateTimeDisplay();
+            }
+
+            updateTimeDisplay() {
+                if (!this.data) return;
+                
+                const tickData = this.data.positions[this.currentTick];
+                if (tickData) {
+                    const m = this.data.metadata;
+                    const currentTime = tickData.game_time - m.time_range.min;
+                    const totalTime = m.time_range.max - m.time_range.min;
+                    
+                    document.getElementById('time-display').textContent = 
+                        `${this.formatTime(currentTime)} / ${this.formatTime(totalTime)}`;
+                    
+                    const progress = (this.currentTick / (this.data.positions.length - 1)) * 100;
+                    document.getElementById('timeline-progress').style.width = `${progress}%`;
+                }
+            }
+
+            formatTime(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+
+            animate() {
+                requestAnimationFrame(() => this.animate());
+
+                if (this.updateCamera) {
+                    this.updateCamera();
+                }
+
+                if (this.isPlaying && this.data) {
+                    const now = Date.now();
+                    if (!this.lastUpdateTime) {
+                        this.lastUpdateTime = now;
+                    }
+                    
+                    const delta = now - this.lastUpdateTime;
+                    if (delta > (16 / this.playSpeed)) {
+                        this.currentTick += 1;
+                        if (this.currentTick >= this.data.positions.length) {
+                            this.currentTick = this.data.positions.length - 1;
+                            this.isPlaying = false;
+                            document.getElementById('play-btn').textContent = '▶';
+                        } else {
+                            this.renderTick(this.currentTick);
+                            this.updateTimeDisplay();
+                        }
+                        this.lastUpdateTime = now;
+                    }
+                }
+
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            new CombatSimulation();
+        });
+    </script>
+</body>
+</html>
+
+
