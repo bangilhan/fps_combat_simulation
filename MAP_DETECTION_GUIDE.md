@@ -60,6 +60,50 @@ tick,game_time,map_name,name,X,Y,Z,...
 - Source SDK나 VRF (Valve Resource Format) 도구 사용
 - 추출한 데이터를 `map_data.json`에 추가
 
+## 맵 지오메트리 렌더링
+
+외부에서 맵 지오메트리 데이터를 가져와 3D 시뮬레이션에 실제 맵 구조물(벽, 건물, 사이트 등)을 렌더링할 수 있습니다.
+
+### 맵 지오메트리 데이터 형식
+
+`map_data.json` 파일에 `geometry` 객체를 추가하면 자동으로 3D로 렌더링됩니다:
+
+```json
+{
+  "Anubis": {
+    "minX": -2000, "maxX": 2000,
+    "geometry": {
+      "walls": [
+        {"x": -1500, "y": -1500, "z": 0, "width": 100, "height": 300, "depth": 2000, "rotation": 0}
+      ],
+      "buildings": [
+        {"x": -800, "y": -800, "z": 0, "width": 400, "height": 200, "depth": 400, "rotation": 0}
+      ],
+      "sites": [
+        {"x": -1000, "y": -1000, "z": 0, "name": "A Site"}
+      ],
+      "spawns": [
+        {"x": -1800, "y": -1800, "z": 0, "team": "CT"}
+      ]
+    }
+  }
+}
+```
+
+### 외부 맵 지오메트리 데이터 소스
+
+1. **GitHub에서 호스팅**: 
+   - `map_geometry_example.json` 파일을 참고하여 맵 지오메트리 데이터 생성
+   - GitHub에 업로드하고 `loadMapData()` 함수의 URL 수정
+
+2. **커뮤니티 리소스**:
+   - CS2 맵 에디터에서 추출한 지오메트리 데이터
+   - 커뮤니티에서 공유하는 맵 구조 데이터
+
+3. **자동 렌더링**:
+   - 맵이 감지되면 자동으로 지오메트리 렌더링
+   - 외부 데이터 로드 후에도 자동으로 업데이트
+
 ## 맵 범위 데이터 개선
 
 현재 `detectMapFromBounds()` 함수의 맵 범위는 예시 값입니다. 더 정확한 데이터를 얻으려면:

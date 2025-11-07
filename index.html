@@ -3143,9 +3143,21 @@ Three.js · PapaParse · Pure JavaScript`
                         const response = await fetch(source);
                         if (response.ok) {
                             const externalData = await response.json();
-                            // 외부 데이터와 기본 데이터 병합
+                            // 외부 데이터와 기본 데이터 병합 (외부 데이터가 우선)
                             this.mapData = { ...defaultMapData, ...externalData };
+                            // 외부 데이터의 각 맵에 대해 기본 데이터 병합 (geometry 유지)
+                            for (const mapName in externalData) {
+                                if (defaultMapData[mapName]) {
+                                    this.mapData[mapName] = { ...defaultMapData[mapName], ...externalData[mapName] };
+                                }
+                            }
                             console.log('외부 맵 데이터 로드 성공:', source);
+                            
+                            // 이미 맵이 로드되어 있으면 지오메트리 다시 렌더링
+                            if (this.detectedMapName && this.mapData[this.detectedMapName]) {
+                                this.renderMapGeometry(this.detectedMapName);
+                            }
+                            
                             return this.mapData;
                         }
                     } catch (error) {
@@ -3197,6 +3209,116 @@ Three.js · PapaParse · Pure JavaScript`
                 return bestMatch;
             }
             
+            async renderMapGeometry(mapName) {
+                // 맵 지오메트리 데이터 로드
+                if (!this.mapData || !this.mapData[mapName] || !this.mapData[mapName].geometry) {
+                    console.log('맵 지오메트리 데이터 없음:', mapName);
+                    return;
+                }
+                
+                const geometry = this.mapData[mapName].geometry;
+                const mapGroup = new THREE.Group();
+                mapGroup.name = 'mapGeometry';
+                
+                // 기존 맵 지오메트리 제거
+                const existingMap = this.scene.getObjectByName('mapGeometry');
+                if (existingMap) {
+                    this.scene.remove(existingMap);
+                }
+                
+                // 벽 렌더링
+                if (geometry.walls && geometry.walls.length > 0) {
+                    const wallMaterial = new THREE.MeshStandardMaterial({ 
+                        color: 0x4a5568, 
+                        metalness: 0.3,
+                        roughness: 0.7,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    
+                    geometry.walls.forEach(wall => {
+                        const wallGeometry = new THREE.BoxGeometry(wall.width, wall.height, wall.depth);
+                        const wallMesh = new THREE.Mesh(wallGeometry, wallMaterial);
+                        wallMesh.position.set(wall.x, wall.z + wall.height / 2, wall.y);
+                        if (wall.rotation) {
+                            wallMesh.rotation.y = wall.rotation * Math.PI / 180;
+                        }
+                        wallMesh.castShadow = true;
+                        wallMesh.receiveShadow = true;
+                        mapGroup.add(wallMesh);
+                    });
+                }
+                
+                // 건물 렌더링
+                if (geometry.buildings && geometry.buildings.length > 0) {
+                    const buildingMaterial = new THREE.MeshStandardMaterial({ 
+                        color: 0x2d3748, 
+                        metalness: 0.2,
+                        roughness: 0.8,
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                    
+                    geometry.buildings.forEach(building => {
+                        const buildingGeometry = new THREE.BoxGeometry(building.width, building.height, building.depth);
+                        const buildingMesh = new THREE.Mesh(buildingGeometry, buildingMaterial);
+                        buildingMesh.position.set(building.x, building.z + building.height / 2, building.y);
+                        if (building.rotation) {
+                            buildingMesh.rotation.y = building.rotation * Math.PI / 180;
+                        }
+                        buildingMesh.castShadow = true;
+                        buildingMesh.receiveShadow = true;
+                        mapGroup.add(buildingMesh);
+                    });
+                }
+                
+                // 폭탄 설치 지점 표시
+                if (geometry.sites && geometry.sites.length > 0) {
+                    const siteMaterial = new THREE.MeshStandardMaterial({ 
+                        color: 0xff6b6b, 
+                        emissive: 0xff0000,
+                        emissiveIntensity: 0.3,
+                        transparent: true,
+                        opacity: 0.6
+                    });
+                    
+                    geometry.sites.forEach(site => {
+                        const siteGeometry = new THREE.CylinderGeometry(50, 50, 5, 16);
+                        const siteMesh = new THREE.Mesh(siteGeometry, siteMaterial);
+                        siteMesh.position.set(site.x, site.z + 2.5, site.y);
+                        siteMesh.rotation.x = Math.PI / 2;
+                        mapGroup.add(siteMesh);
+                        
+                        // 사이트 이름 라벨 (선택적)
+                        if (site.name) {
+                            const loader = new THREE.FontLoader();
+                            // 텍스트는 나중에 추가 가능
+                        }
+                    });
+                }
+                
+                // 스폰 지점 표시
+                if (geometry.spawns && geometry.spawns.length > 0) {
+                    geometry.spawns.forEach(spawn => {
+                        const spawnColor = spawn.team === 'CT' ? 0x4a90e2 : 0xff6b6b;
+                        const spawnMaterial = new THREE.MeshStandardMaterial({ 
+                            color: spawnColor, 
+                            transparent: true,
+                            opacity: 0.5
+                        });
+                        const spawnGeometry = new THREE.CylinderGeometry(30, 30, 10, 8);
+                        const spawnMesh = new THREE.Mesh(spawnGeometry, spawnMaterial);
+                        spawnMesh.position.set(spawn.x, spawn.z + 5, spawn.y);
+                        spawnMesh.rotation.x = Math.PI / 2;
+                        mapGroup.add(spawnMesh);
+                    });
+                }
+                
+                // 맵 지오메트리를 씬에 추가
+                this.scene.add(mapGroup);
+                console.log('맵 지오메트리 렌더링 완료:', mapName);
+            }
+            
             setupMapBounds() {
                 if (!this.mapBounds) return;
                 
@@ -3214,6 +3336,11 @@ Three.js · PapaParse · Pure JavaScript`
                 );
                 line.position.set(bounds.centerX, bounds.centerZ, bounds.centerY);
                 this.scene.add(line);
+                
+                // 맵 지오메트리 렌더링 (감지된 맵이 있으면)
+                if (this.detectedMapName) {
+                    this.renderMapGeometry(this.detectedMapName);
+                }
                 
                 // 카메라 위치 조정 및 기본 거리 설정
                 const maxDim = Math.max(width, height, depth);

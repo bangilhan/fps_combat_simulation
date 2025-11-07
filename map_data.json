@@ -9,7 +9,29 @@
     "centerX": 0,
     "centerY": 0,
     "centerZ": 200,
-    "description": "de_anubis"
+    "description": "de_anubis",
+    "geometry": {
+      "walls": [
+        {"x": -1500, "y": -1500, "z": 0, "width": 100, "height": 300, "depth": 2000, "rotation": 0},
+        {"x": 1500, "y": -1500, "z": 0, "width": 100, "height": 300, "depth": 2000, "rotation": 0},
+        {"x": 0, "y": -2000, "z": 0, "width": 3000, "height": 300, "depth": 100, "rotation": 0},
+        {"x": 0, "y": 2000, "z": 0, "width": 3000, "height": 300, "depth": 100, "rotation": 0}
+      ],
+      "buildings": [
+        {"x": -800, "y": -800, "z": 0, "width": 400, "height": 200, "depth": 400, "rotation": 0},
+        {"x": 800, "y": 800, "z": 0, "width": 400, "height": 200, "depth": 400, "rotation": 0},
+        {"x": -1200, "y": 1200, "z": 0, "width": 300, "height": 250, "depth": 300, "rotation": 0},
+        {"x": 1200, "y": -1200, "z": 0, "width": 300, "height": 250, "depth": 300, "rotation": 0}
+      ],
+      "sites": [
+        {"x": -1000, "y": -1000, "z": 0, "name": "A Site"},
+        {"x": 1000, "y": 1000, "z": 0, "name": "B Site"}
+      ],
+      "spawns": [
+        {"x": -1800, "y": -1800, "z": 0, "team": "CT"},
+        {"x": 1800, "y": 1800, "z": 0, "team": "T"}
+      ]
+    }
   },
   "Dust2": {
     "minX": -2500,
