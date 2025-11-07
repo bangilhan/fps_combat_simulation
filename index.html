@@ -2173,9 +2173,25 @@ Three.js · PapaParse · 순수 JavaScript`;
                     lx += 80;
                 });
 
-                // 제목
+                // 제목 및 거리 정보
                 ctx.fillStyle = '#ffffff'; ctx.font = '14px Arial';
-                ctx.fillText(`Aim Trace - ${name || 'N/A'}`, pad, 20);
+                let titleText = `Aim Trace - ${name || 'N/A'}`;
+                
+                // 킬 이벤트가 있으면 거리 정보 추가
+                if (this.selectedEvent && this.selectedEvent.attacker && this.selectedEvent.victim) {
+                    const attackerPos = this.selectedEvent.attacker.position;
+                    const victimPos = this.selectedEvent.victim.position;
+                    if (attackerPos && victimPos && attackerPos[0] !== null && victimPos[0] !== null) {
+                        // 3D 거리 계산
+                        const dx = attackerPos[0] - victimPos[0];
+                        const dy = attackerPos[1] - victimPos[1];
+                        const dz = attackerPos[2] - victimPos[2];
+                        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                        titleText += ` | 사거리: ${distance.toFixed(1)} units`;
+                    }
+                }
+                
+                ctx.fillText(titleText, pad, 20);
             }
 
             generateReport(playerName) {
@@ -2694,12 +2710,19 @@ Three.js · PapaParse · 순수 JavaScript`;
 
             setupControls() {
                 let isMouseDown = false;
+                let isPanning = false; // 패닝 모드 플래그
                 let mouseX = 0, mouseY = 0;
+                
+                // 패닝 오프셋을 인스턴스 변수로 초기화
+                if (!this.panOffset) {
+                    this.panOffset = { x: 0, y: 0, z: 0 };
+                }
 
                 const canvas = document.getElementById('canvas');
                 
                 canvas.addEventListener('mousedown', (e) => {
                     isMouseDown = true;
+                    isPanning = e.shiftKey; // Shift 키가 눌려있으면 패닝 모드
                     mouseX = e.clientX;
                     mouseY = e.clientY;
                 });
@@ -2708,9 +2731,32 @@ Three.js · PapaParse · 순수 JavaScript`;
                     if (isMouseDown) {
                         const deltaX = e.clientX - mouseX;
                         const deltaY = e.clientY - mouseY;
-                        this.cameraRotationY += deltaX * 0.01;
-                        this.cameraRotationX += deltaY * 0.01;
-                        this.cameraRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.cameraRotationX));
+                        
+                        if (isPanning || e.shiftKey) {
+                            // 패닝 모드: 카메라를 평면으로 이동
+                            const panSpeed = 0.5;
+                            const right = new THREE.Vector3();
+                            const up = new THREE.Vector3();
+                            
+                            // 카메라의 오른쪽 방향 계산
+                            this.camera.getWorldDirection(new THREE.Vector3());
+                            right.setFromMatrixColumn(this.camera.matrixWorld, 0);
+                            up.setFromMatrixColumn(this.camera.matrixWorld, 1);
+                            
+                            // 패닝 오프셋 누적
+                            this.panOffset.x -= right.x * deltaX * panSpeed;
+                            this.panOffset.y -= right.y * deltaX * panSpeed;
+                            this.panOffset.z -= right.z * deltaX * panSpeed;
+                            
+                            this.panOffset.x += up.x * deltaY * panSpeed;
+                            this.panOffset.y += up.y * deltaY * panSpeed;
+                            this.panOffset.z += up.z * deltaY * panSpeed;
+                        } else {
+                            // 일반 모드: 카메라 회전
+                            this.cameraRotationY += deltaX * 0.01;
+                            this.cameraRotationX += deltaY * 0.01;
+                            this.cameraRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.cameraRotationX));
+                        }
                         mouseX = e.clientX;
                         mouseY = e.clientY;
                     }
@@ -2718,6 +2764,20 @@ Three.js · PapaParse · 순수 JavaScript`;
 
                 canvas.addEventListener('mouseup', () => {
                     isMouseDown = false;
+                    isPanning = false;
+                });
+                
+                // Shift 키 상태 추적
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Shift' && isMouseDown) {
+                        isPanning = true;
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    if (e.key === 'Shift') {
+                        isPanning = false;
+                    }
                 });
 
                 canvas.addEventListener('wheel', (e) => {
@@ -2729,24 +2789,42 @@ Three.js · PapaParse · 순수 JavaScript`;
                     this.cameraDistance = Math.max(minDist, Math.min(maxDist, this.cameraDistance));
                     e.preventDefault();
                 });
-
+                
                 this.updateCamera = () => {
                     // 타겟이 설정되어 있으면 타겟 중심, 없으면 맵 중심
                     if (this.cameraTarget) {
                         this.updateCameraToTarget();
                     } else if (this.mapBounds) {
                         const bounds = this.mapBounds;
-                        const x = bounds.centerX + this.cameraDistance * Math.sin(this.cameraRotationY) * Math.cos(this.cameraRotationX);
-                        const y = bounds.centerZ + this.cameraDistance * Math.sin(this.cameraRotationX);
-                        const z = bounds.centerY + this.cameraDistance * Math.cos(this.cameraRotationY) * Math.cos(this.cameraRotationX);
-                        this.camera.position.set(x, y, z);
-                        this.camera.lookAt(bounds.centerX, bounds.centerZ, bounds.centerY);
+                        const baseX = bounds.centerX + this.cameraDistance * Math.sin(this.cameraRotationY) * Math.cos(this.cameraRotationX);
+                        const baseY = bounds.centerZ + this.cameraDistance * Math.sin(this.cameraRotationX);
+                        const baseZ = bounds.centerY + this.cameraDistance * Math.cos(this.cameraRotationY) * Math.cos(this.cameraRotationX);
+                        // 패닝 오프셋 적용
+                        this.camera.position.set(
+                            baseX + this.panOffset.x,
+                            baseY + this.panOffset.y,
+                            baseZ + this.panOffset.z
+                        );
+                        this.camera.lookAt(
+                            bounds.centerX + this.panOffset.x,
+                            bounds.centerZ + this.panOffset.y,
+                            bounds.centerY + this.panOffset.z
+                        );
                     } else {
-                        const x = this.cameraDistance * Math.sin(this.cameraRotationY) * Math.cos(this.cameraRotationX);
-                        const y = this.cameraDistance * Math.sin(this.cameraRotationX);
-                        const z = this.cameraDistance * Math.cos(this.cameraRotationY) * Math.cos(this.cameraRotationX);
-                        this.camera.position.set(x, y, z);
-                        this.camera.lookAt(0, 0, 0);
+                        const baseX = this.cameraDistance * Math.sin(this.cameraRotationY) * Math.cos(this.cameraRotationX);
+                        const baseY = this.cameraDistance * Math.sin(this.cameraRotationX);
+                        const baseZ = this.cameraDistance * Math.cos(this.cameraRotationY) * Math.cos(this.cameraRotationX);
+                        // 패닝 오프셋 적용
+                        this.camera.position.set(
+                            baseX + this.panOffset.x,
+                            baseY + this.panOffset.y,
+                            baseZ + this.panOffset.z
+                        );
+                        this.camera.lookAt(
+                            this.panOffset.x,
+                            this.panOffset.y,
+                            this.panOffset.z
+                        );
                     }
                 };
 
@@ -2785,6 +2863,12 @@ Three.js · PapaParse · 순수 JavaScript`;
                     this.cameraRotationY = 0;
                     this.cameraDistance = this.baseCameraDistance;
                     this.cameraTarget = null; // 타겟 해제
+                    // 패닝 오프셋 초기화
+                    if (this.panOffset) {
+                        this.panOffset.x = 0;
+                        this.panOffset.y = 0;
+                        this.panOffset.z = 0;
+                    }
                     this.updateCamera();
                 });
             }
@@ -3285,6 +3369,40 @@ Three.js · PapaParse · 순수 JavaScript`;
                         marker.rotation.x = -Math.PI / 2;
                         this.scene.add(marker);
                         this.eventMarkers.push(marker);
+                        
+                        // Attacker 라벨 추가
+                        const attackerCanvas = document.createElement('canvas');
+                        const attackerCtx = attackerCanvas.getContext('2d');
+                        attackerCanvas.width = 280;
+                        attackerCanvas.height = 60;
+                        attackerCtx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+                        attackerCtx.fillRect(0, 0, attackerCanvas.width, attackerCanvas.height);
+                        attackerCtx.strokeStyle = '#ff0000';
+                        attackerCtx.lineWidth = 2;
+                        attackerCtx.strokeRect(2, 2, attackerCanvas.width - 4, attackerCanvas.height - 4);
+                        attackerCtx.fillStyle = '#ffffff';
+                        attackerCtx.font = 'bold 20px Arial';
+                        attackerCtx.textAlign = 'center';
+                        if (event.attacker.name) {
+                            attackerCtx.fillText(event.attacker.name, attackerCanvas.width / 2, 25);
+                        }
+                        attackerCtx.fillStyle = '#ff6b6b';
+                        attackerCtx.font = '14px Arial';
+                        attackerCtx.fillText('attacker', attackerCanvas.width / 2, 45);
+                        const attackerTex = new THREE.CanvasTexture(attackerCanvas);
+                        const attackerSprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
+                            map: attackerTex, 
+                            transparent: true,
+                            depthTest: false
+                        }));
+                        attackerSprite.position.set(
+                            event.attacker.position[0],
+                            event.attacker.position[2] + 80,
+                            event.attacker.position[1]
+                        );
+                        attackerSprite.scale.set(140, 30, 1);
+                        this.scene.add(attackerSprite);
+                        this.eventMarkers.push(attackerSprite);
 
                         if (event.victim.position[0] !== null) {
                             const lineGeometry = new THREE.BufferGeometry().setFromPoints([
@@ -3325,7 +3443,7 @@ Three.js · PapaParse · 순수 JavaScript`;
                                     const canvas = document.createElement('canvas');
                                     const ctx = canvas.getContext('2d');
                                     canvas.width = 320;
-                                    canvas.height = 80;
+                                    canvas.height = 100;
                                     
                                     // 배경 (투명도 적용)
                                     ctx.fillStyle = `rgba(0, 0, 0, ${0.85 * opacity})`;
@@ -3342,25 +3460,38 @@ Three.js · PapaParse · 순수 JavaScript`;
                                     ctx.textAlign = 'center';
                                     ctx.fillText('KILLED', canvas.width / 2, 35);
                                     
+                                    // Victim 이름 표시
+                                    if (event.victim.name) {
+                                        ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+                                        ctx.font = 'bold 18px Arial';
+                                        ctx.fillText(event.victim.name, canvas.width / 2, 58);
+                                    }
+                                    
+                                    // victim 텍스트
+                                    ctx.fillStyle = `rgba(255, 107, 107, ${opacity})`;
+                                    ctx.font = '14px Arial';
+                                    ctx.fillText('victim', canvas.width / 2, 78);
+                                    
                                     // HEADSHOT 표시 (헤드샷인 경우)
                                     if (event.headshot) {
                                         ctx.fillStyle = `rgba(255, 215, 0, ${opacity})`;
-                                        ctx.font = 'bold 24px Arial';
-                                        ctx.fillText('HEADSHOT', canvas.width / 2, 60);
+                                        ctx.font = 'bold 20px Arial';
+                                        ctx.fillText('HEADSHOT', canvas.width / 2, 95);
                                     }
                                     
                                     const tex = new THREE.CanvasTexture(canvas);
                                     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
                                         map: tex, 
                                         transparent: true,
-                                        opacity: opacity
+                                        opacity: opacity,
+                                        depthTest: false // 항상 앞에 표시
                                     }));
                                     sprite.position.set(
                                         event.victim.position[0],
-                                        event.victim.position[2] + 50,
+                                        event.victim.position[2] + 70, // 더 위로 올림
                                         event.victim.position[1]
                                     );
-                                    sprite.scale.set(160, 40, 1);
+                                    sprite.scale.set(160, 50, 1);
                                     this.scene.add(sprite);
                                     this.eventMarkers.push(sprite);
                                 }
