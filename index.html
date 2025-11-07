@@ -1334,8 +1334,221 @@ Three.js · PapaParse · 순수 JavaScript`;
                 // 언어 전환 버튼
                 document.getElementById('lang-toggle').addEventListener('click', () => {
                     this.language = this.language === 'ko' ? 'en' : 'ko';
+                    this.updateLanguage();
+                });
+                
+                // 언어 업데이트 함수
+                this.updateLanguage = () => {
                     const langToggle = document.getElementById('lang-toggle');
                     langToggle.textContent = this.language === 'ko' ? '🌐 EN' : '🌐 KO';
+                    
+                    // UI 텍스트 정의
+                    const uiTexts = {
+                        ko: {
+                            navInfo: 'Info',
+                            navSimulation: '3D 시뮬레이션 분석',
+                            navReport: '분석 보고서',
+                            fileLoad: '파일 로드',
+                            selectFile: '파일 선택',
+                            noFileSelected: '선택된 파일 없음',
+                            processing: 'CSV 파일 처리 중...',
+                            statistics: '통계',
+                            title: '제목',
+                            name: '이름',
+                            game: '게임',
+                            server: '서버',
+                            gameMode: '게임 모드',
+                            startTime: '시작 시간',
+                            length: '길이',
+                            players: '플레이어',
+                            match: '매치',
+                            matchStartTime: '매치 시작 시간',
+                            matchLength: '매치 길이',
+                            matchMode: '매치 모드',
+                            mapName: '맵 이름',
+                            totalEvents: '총 이벤트',
+                            mapBounds: '맵 경계',
+                            calculating: '계산 중...',
+                            mapRendering: '맵 렌더링 정보',
+                            currentMap: '현재 맵',
+                            note: '참고',
+                            kdRatio: 'K/D 비율',
+                            kdDesc: 'K/D: 킬 / 데스 - 클릭하여 필터링',
+                            killEvents: '킬 이벤트가 여기에 표시됩니다',
+                            go: '이동',
+                            resetView: '뷰 초기화',
+                            prev: '이전',
+                            next: '다음',
+                            follow: '따라가기',
+                            focusMode: '포커스 모드: 이벤트 선택됨',
+                            exitFocus: '포커스 모드 종료',
+                            actionStream: '액션 스트림',
+                            matchChat: '매치 채팅',
+                            aimTrace: '에임 트레이스'
+                        },
+                        en: {
+                            navInfo: 'Info',
+                            navSimulation: '3D Simulation Analysis',
+                            navReport: 'Analysis Report',
+                            fileLoad: 'File Load',
+                            selectFile: 'Select File',
+                            noFileSelected: 'No file selected',
+                            processing: 'Processing CSV file...',
+                            statistics: 'Statistics',
+                            title: 'Title',
+                            name: 'Name',
+                            game: 'Game',
+                            server: 'Server',
+                            gameMode: 'Game Mode',
+                            startTime: 'Start Time',
+                            length: 'Length',
+                            players: 'Players',
+                            match: 'Match',
+                            matchStartTime: 'Match Start Time',
+                            matchLength: 'Match Length',
+                            matchMode: 'Match Mode',
+                            mapName: 'Map Name',
+                            totalEvents: 'Total Events',
+                            mapBounds: 'Map Bounds',
+                            calculating: 'Calculating...',
+                            mapRendering: 'Map Rendering Info',
+                            currentMap: 'Current Map',
+                            note: 'Note',
+                            kdRatio: 'K/D Ratio',
+                            kdDesc: 'K/D: Kills / Deaths - Click to filter',
+                            killEvents: 'Kill events will appear here',
+                            go: 'Go',
+                            resetView: 'Reset View',
+                            prev: 'Prev',
+                            next: 'Next',
+                            follow: 'Follow',
+                            focusMode: 'Focus Mode: Event selected',
+                            exitFocus: 'Exit Focus Mode',
+                            actionStream: 'Action Stream',
+                            matchChat: 'Match Chat',
+                            aimTrace: 'Aim Trace'
+                        }
+                    };
+                    
+                    const t = uiTexts[this.language];
+                    
+                    // 네비게이션 메뉴 업데이트
+                    const navItems = document.querySelectorAll('.nav-item');
+                    navItems.forEach(item => {
+                        const text = item.textContent.trim();
+                        if (text.includes('Info') || item.classList.contains('active') && item.previousElementSibling && item.previousElementSibling.id === 'brand-logo') {
+                            // Info는 그대로
+                        } else if (text.includes('3D') || text.includes('시뮬레이션')) {
+                            item.textContent = t.navSimulation;
+                        } else if (text.includes('분석 보고서') || text.includes('Analysis Report')) {
+                            item.textContent = t.navReport;
+                        }
+                    });
+                    
+                    // 사이드바 업데이트
+                    const sidebarSections = document.querySelectorAll('.sidebar-section h3');
+                    sidebarSections.forEach(h3 => {
+                        if (h3.textContent.includes('File Load') || h3.textContent.includes('파일 로드')) {
+                            h3.textContent = t.fileLoad;
+                        } else if (h3.textContent.includes('Statistics') || h3.textContent.includes('통계')) {
+                            h3.textContent = t.statistics;
+                        }
+                    });
+                    
+                    // 파일 선택 버튼
+                    const selectBtn = document.getElementById('select-csv-btn');
+                    if (selectBtn) selectBtn.textContent = t.selectFile;
+                    
+                    // 선택된 파일 없음
+                    const selectedFile = document.getElementById('selected-file');
+                    if (selectedFile && selectedFile.textContent.includes('선택된 파일 없음') || selectedFile.textContent.includes('No file selected')) {
+                        if (selectedFile.textContent === '선택된 파일 없음' || selectedFile.textContent === 'No file selected') {
+                            selectedFile.textContent = t.noFileSelected;
+                        }
+                    }
+                    
+                    // 처리 중
+                    const loading = document.getElementById('loading');
+                    if (loading) loading.textContent = t.processing;
+                    
+                    // Statistics 섹션 업데이트
+                    const statLabels = document.querySelectorAll('.stat-label');
+                    statLabels.forEach(label => {
+                        const text = label.textContent.trim();
+                        if (text.includes('Name:')) label.textContent = t.name + ':';
+                        else if (text.includes('Server:')) label.textContent = t.server + ':';
+                        else if (text.includes('Game Mode:')) label.textContent = t.gameMode + ':';
+                        else if (text.includes('Start time:')) label.textContent = t.startTime + ':';
+                        else if (text.includes('Length:')) label.textContent = t.length + ':';
+                        else if (text.includes('Players:')) label.textContent = t.players + ':';
+                        else if (text.includes('Match Start Time:')) label.textContent = t.matchStartTime + ':';
+                        else if (text.includes('Match Length:')) label.textContent = t.matchLength + ':';
+                        else if (text.includes('Match Mode:')) label.textContent = t.matchMode + ':';
+                        else if (text.includes('Map Name:')) label.textContent = t.mapName + ':';
+                        else if (text.includes('Total Events:')) label.textContent = t.totalEvents + ':';
+                    });
+                    
+                    const statTitles = document.querySelectorAll('.stat-group-title');
+                    statTitles.forEach(title => {
+                        const text = title.textContent.trim();
+                        if (text.includes('Title')) title.textContent = t.title;
+                        else if (text.includes('Game')) title.textContent = t.game;
+                        else if (text.includes('Match')) title.textContent = t.match;
+                        else if (text.includes('Players') || text.includes('K/D')) title.textContent = t.players + ' (' + t.kdRatio + ')';
+                        else if (text.includes('Map Bounds') || text.includes('맵 경계')) title.textContent = t.mapBounds;
+                    });
+                    
+                    // K/D 설명
+                    const kdDesc = document.querySelector('.stat-group-title').nextElementSibling;
+                    if (kdDesc && kdDesc.style && kdDesc.textContent.includes('K/D')) {
+                        kdDesc.textContent = t.kdDesc;
+                    }
+                    
+                    // 이벤트 피커 업데이트
+                    const killSelect = document.getElementById('kill-select');
+                    if (killSelect && killSelect.options[0]) {
+                        killSelect.options[0].text = t.killEvents;
+                    }
+                    
+                    const playerSelect = document.getElementById('player-select');
+                    if (playerSelect && playerSelect.options[0]) {
+                        playerSelect.options[0].text = t.players;
+                    }
+                    
+                    // 버튼 업데이트
+                    const goBtn = document.getElementById('go-kill');
+                    if (goBtn) goBtn.textContent = t.go;
+                    
+                    const resetBtn = document.getElementById('reset-view');
+                    if (resetBtn) resetBtn.textContent = t.resetView;
+                    
+                    const prevBtn = document.getElementById('prev-player-tick');
+                    if (prevBtn) prevBtn.textContent = t.prev;
+                    
+                    const nextBtn = document.getElementById('next-player-tick');
+                    if (nextBtn) nextBtn.textContent = t.next;
+                    
+                    const followBtn = document.getElementById('follow-toggle');
+                    if (followBtn) followBtn.textContent = t.follow;
+                    
+                    const exitFocusBtn = document.getElementById('exit-focus-btn');
+                    if (exitFocusBtn) exitFocusBtn.textContent = t.exitFocus;
+                    
+                    const focusInfo = document.getElementById('focus-info');
+                    if (focusInfo) focusInfo.textContent = t.focusMode;
+                    
+                    // 하단 패널 탭 업데이트
+                    const tabBtns = document.querySelectorAll('.tab-btn');
+                    tabBtns.forEach(btn => {
+                        const text = btn.textContent.trim();
+                        if (text.includes('Action Stream') || text.includes('액션 스트림')) {
+                            btn.textContent = t.actionStream;
+                        } else if (text.includes('Match Chat') || text.includes('매치 채팅')) {
+                            btn.textContent = t.matchChat;
+                        } else if (text.includes('Aim Trace') || text.includes('에임 트레이스')) {
+                            btn.textContent = t.aimTrace;
+                        }
+                    });
                     
                     // 보고서가 열려있으면 언어 변경 후 재생성
                     if (this.currentReportWindow && !this.currentReportWindow.closed) {
@@ -1346,7 +1559,7 @@ Three.js · PapaParse · 순수 JavaScript`;
                             this.generateReport(playerName);
                         }
                     }
-                });
+                };
             }
 
             async loadCSV(file) {
