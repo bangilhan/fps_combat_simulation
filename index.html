@@ -3520,12 +3520,12 @@ Three.js · PapaParse · 순수 JavaScript`;
                                         ctx.fillText('HEADSHOT', canvas.width / 2, yPos);
                                     }
                                     
-                                    // 무기 정보 표시
+                                    // 무기 정보 표시 (attacker가 사용한 무기 = victim을 죽인 무기)
                                     if (event.weapon) {
                                         yPos += 20;
                                         ctx.fillStyle = `rgba(255, 165, 0, ${opacity})`;
                                         ctx.font = '14px Arial';
-                                        ctx.fillText(event.weapon, canvas.width / 2, yPos);
+                                        ctx.fillText(`by ${event.weapon}`, canvas.width / 2, yPos);
                                     }
                                     
                                     // victim 텍스트
