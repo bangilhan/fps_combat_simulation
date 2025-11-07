@@ -3281,6 +3281,18 @@ Three.js · PapaParse · 순수 JavaScript`;
                     this.playerObjects.set(player.name, mesh);
 
                     // 플레이어 ID 라벨 (크게)
+                    // 현재 틱에 킬 이벤트가 있고 이 플레이어가 공격자인지 확인
+                    let isAttacker = false;
+                    if (this.data && this.data.events) {
+                        const currentTime = tickData.game_time;
+                        const activeEvent = this.data.events.find(e => 
+                            Math.abs(e.game_time - currentTime) < 0.05 && 
+                            e.attacker && 
+                            e.attacker.name === player.name
+                        );
+                        isAttacker = !!activeEvent;
+                    }
+                    
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     canvas.width = 512;
@@ -3296,7 +3308,9 @@ Three.js · PapaParse · 순수 JavaScript`;
                     ctx.fillStyle = '#ffffff';
                     ctx.font = 'bold 36px Arial';
                     ctx.textAlign = 'center';
-                    ctx.fillText(player.name, canvas.width / 2, canvas.height / 2 + 12);
+                    // 공격자인 경우 이름 옆에 (attacker) 추가
+                    const displayText = isAttacker ? `${player.name} (attacker)` : player.name;
+                    ctx.fillText(displayText, canvas.width / 2, canvas.height / 2 + 12);
                     
                     const texture = new THREE.CanvasTexture(canvas);
                     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
@@ -3369,35 +3383,6 @@ Three.js · PapaParse · 순수 JavaScript`;
                         marker.rotation.x = -Math.PI / 2;
                         this.scene.add(marker);
                         this.eventMarkers.push(marker);
-                        
-                        // Attacker 라벨 추가 (파란색 박스)
-                        const attackerCanvas = document.createElement('canvas');
-                        const attackerCtx = attackerCanvas.getContext('2d');
-                        attackerCanvas.width = 200;
-                        attackerCanvas.height = 50;
-                        attackerCtx.fillStyle = 'rgba(91, 155, 213, 0.85)'; // 파란색 배경
-                        attackerCtx.fillRect(0, 0, attackerCanvas.width, attackerCanvas.height);
-                        attackerCtx.strokeStyle = '#5b9bd5';
-                        attackerCtx.lineWidth = 2;
-                        attackerCtx.strokeRect(2, 2, attackerCanvas.width - 4, attackerCanvas.height - 4);
-                        attackerCtx.fillStyle = '#ffffff';
-                        attackerCtx.font = '14px Arial';
-                        attackerCtx.textAlign = 'center';
-                        attackerCtx.fillText('(attacker)', attackerCanvas.width / 2, attackerCanvas.height / 2 + 5);
-                        const attackerTex = new THREE.CanvasTexture(attackerCanvas);
-                        const attackerSprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
-                            map: attackerTex, 
-                            transparent: true,
-                            depthTest: false
-                        }));
-                        attackerSprite.position.set(
-                            event.attacker.position[0],
-                            event.attacker.position[2] + 80,
-                            event.attacker.position[1]
-                        );
-                        attackerSprite.scale.set(100, 25, 1);
-                        this.scene.add(attackerSprite);
-                        this.eventMarkers.push(attackerSprite);
 
                         if (event.victim.position[0] !== null) {
                             const lineGeometry = new THREE.BufferGeometry().setFromPoints([
