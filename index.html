@@ -27,6 +27,9 @@
             align-items: center;
             padding: 0 20px;
             gap: 30px;
+            position: relative;
+            z-index: 1000;
+            width: 100%;
         }
 
         #brand-logo {
@@ -105,12 +108,12 @@
             overflow-y: auto;
             overflow-x: hidden;
             background: #0f1419;
-            display: none;
+            display: block;
             height: calc(100vh - 50px);
         }
 
-        #dashboard-view.active {
-            display: block;
+        #dashboard-view.hidden {
+            display: none;
         }
 
         #dashboard-content {
@@ -939,7 +942,7 @@
                 
                 if (dashboardView && container) {
                     container.style.display = 'none';
-                    dashboardView.classList.add('active');
+                    dashboardView.classList.remove('hidden');
                     // 하단 패널 숨기기
                     if (bottomPanel) {
                         bottomPanel.style.display = 'none';
@@ -958,8 +961,11 @@
                 const container = document.getElementById('container');
                 const bottomPanel = document.getElementById('bottom-panel');
                 
-                if (dashboardView && container) {
-                    dashboardView.classList.remove('active');
+                if (dashboardView) {
+                    dashboardView.classList.add('hidden');
+                }
+                
+                if (container) {
                     container.style.display = 'flex';
                     // 하단 패널 다시 표시
                     if (bottomPanel) {
