@@ -1,7 +1,11 @@
 {
   "version": 2,
   "cleanUrls": true,
+  "rewrites": [
+    { "source": "/", "destination": "/simulation_enhanced.html" }
+  ],
   "routes": [
+    { "src": "/index.html", "dest": "/simulation_enhanced.html" },
     { "src": "/$", "dest": "/simulation_enhanced.html" }
   ]
 }
