@@ -3338,98 +3338,35 @@ Three.js · PapaParse · Pure JavaScript`
                     this.pathLines = [];
                 }
                 
-                // 공간을 그리드로 나누어 경로 사용 빈도 계산
-                const gridSize = 200; // 200 단위 그리드
-                const pathUsage = new Map(); // "x,y" -> count
-                
-                // 모든 플레이어의 이동 경로 수집
+                // 모든 플레이어의 이동 경로를 그대로 점선으로 렌더링
                 this.playerIndex.forEach((positions, playerName) => {
-                    for (let i = 0; i < positions.length - 1; i++) {
-                        const pos1 = positions[i].position;
-                        const pos2 = positions[i + 1].position;
-                        
-                        if (!pos1 || !pos2) continue;
-                        
-                        // 경로를 세그먼트로 나누어 그리드 셀에 기록
-                        const segments = 5; // 세그먼트 수
-                        for (let s = 0; s <= segments; s++) {
-                            const t = s / segments;
-                            const x = pos1[0] + (pos2[0] - pos1[0]) * t;
-                            const y = pos1[1] + (pos2[1] - pos1[1]) * t;
-                            const z = pos1[2] || 0;
-                            
-                            // 그리드 좌표 계산
-                            const gridX = Math.floor(x / gridSize) * gridSize;
-                            const gridY = Math.floor(y / gridSize) * gridSize;
-                            const gridZ = Math.floor(z / gridSize) * gridSize;
-                            
-                            const key = `${gridX},${gridY},${gridZ}`;
-                            pathUsage.set(key, (pathUsage.get(key) || 0) + 1);
-                        }
-                    }
-                });
-                
-                // 주요 경로 식별 (사용 빈도가 높은 그리드 셀)
-                const minUsage = 3; // 최소 사용 횟수 (조정 가능)
-                const pathSegments = new Map(); // 경로 세그먼트 저장
-                
-                // 각 플레이어 경로를 다시 순회하며 주요 경로 세그먼트 추출
-                this.playerIndex.forEach((positions, playerName) => {
-                    for (let i = 0; i < positions.length - 1; i++) {
-                        const pos1 = positions[i].position;
-                        const pos2 = positions[i + 1].position;
-                        
-                        if (!pos1 || !pos2) continue;
-                        
-                        // 세그먼트의 중간점이 주요 경로 영역에 있는지 확인
-                        const midX = (pos1[0] + pos2[0]) / 2;
-                        const midY = (pos1[1] + pos2[1]) / 2;
-                        const midZ = ((pos1[2] || 0) + (pos2[2] || 0)) / 2;
-                        
-                        const gridX = Math.floor(midX / gridSize) * gridSize;
-                        const gridY = Math.floor(midY / gridSize) * gridSize;
-                        const gridZ = Math.floor(midZ / gridSize) * gridSize;
-                        
-                        const key = `${gridX},${gridY},${gridZ}`;
-                        const usage = pathUsage.get(key) || 0;
-                        
-                        if (usage >= minUsage) {
-                            // 주요 경로 세그먼트 저장
-                            const segmentKey = `${Math.floor(pos1[0]/gridSize)},${Math.floor(pos1[1]/gridSize)},${Math.floor((pos1[2]||0)/gridSize)}-${Math.floor(pos2[0]/gridSize)},${Math.floor(pos2[1]/gridSize)},${Math.floor((pos2[2]||0)/gridSize)}`;
-                            
-                            if (!pathSegments.has(segmentKey)) {
-                                pathSegments.set(segmentKey, {
-                                    start: new THREE.Vector3(pos1[0], pos1[2] || 0, pos1[1]),
-                                    end: new THREE.Vector3(pos2[0], pos2[2] || 0, pos2[1]),
-                                    usage: usage
-                                });
-                            } else {
-                                // 기존 세그먼트의 사용 빈도 업데이트
-                                const existing = pathSegments.get(segmentKey);
-                                existing.usage = Math.max(existing.usage, usage);
-                            }
-                        }
-                    }
-                });
-                
-                // 주요 경로를 점선으로 렌더링
-                pathSegments.forEach((segment, key) => {
-                    const geometry = new THREE.BufferGeometry().setFromPoints([
-                        segment.start,
-                        segment.end
-                    ]);
+                    if (positions.length < 2) return;
                     
-                    // 사용 빈도에 따라 색상과 두께 조정
-                    const intensity = Math.min(segment.usage / 10, 1); // 최대 10회 사용 시 최대 밝기
-                    const color = new THREE.Color(0x4a90e2); // 파란색
-                    color.lerp(new THREE.Color(0x90cdf4), 1 - intensity); // 밝은 파란색으로 그라데이션
+                    // 각 플레이어의 모든 이동 경로를 점선으로 표시
+                    const pathPoints = [];
+                    
+                    for (let i = 0; i < positions.length; i++) {
+                        const pos = positions[i].position;
+                        if (pos && pos[0] !== null && pos[1] !== null) {
+                            pathPoints.push(new THREE.Vector3(
+                                pos[0], 
+                                pos[2] || 0, 
+                                pos[1]
+                            ));
+                        }
+                    }
+                    
+                    if (pathPoints.length < 2) return;
+                    
+                    // 경로를 점선으로 렌더링
+                    const geometry = new THREE.BufferGeometry().setFromPoints(pathPoints);
                     
                     const material = new THREE.LineDashedMaterial({
-                        color: color,
-                        linewidth: 2,
-                        dashSize: 20,
+                        color: 0x4a90e2, // 파란색
+                        linewidth: 1,
+                        dashSize: 15,
                         gapSize: 10,
-                        opacity: 0.6 + intensity * 0.4, // 0.6 ~ 1.0
+                        opacity: 0.3, // 투명도
                         transparent: true
                     });
                     
@@ -3439,7 +3376,7 @@ Three.js · PapaParse · Pure JavaScript`
                     this.pathLines.push(line);
                 });
                 
-                console.log(`주요 경로 ${pathSegments.size}개 렌더링 완료`);
+                console.log(`모든 플레이어 경로 ${this.pathLines.length}개 렌더링 완료`);
             }
             
             setupMapBounds() {
