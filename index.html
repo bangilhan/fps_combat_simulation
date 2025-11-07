@@ -3492,8 +3492,9 @@ Three.js · PapaParse · 순수 JavaScript`;
                                     const canvas = document.createElement('canvas');
                                     const ctx = canvas.getContext('2d');
                                     // 무기 정보를 포함한 크기로 설정
-                                    canvas.width = 300;
-                                    canvas.height = 100;
+                                    // 캔버스 크기 조정 (무기 정보 제거로 크기 축소)
+                                    canvas.width = 280;
+                                    canvas.height = 80;
                                     
                                     // 배경 (투명도 적용)
                                     ctx.fillStyle = `rgba(0, 0, 0, ${0.85 * opacity})`;
