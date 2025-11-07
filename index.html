@@ -98,9 +98,169 @@
             background: #0a0e15;
         }
 
+        #dashboard-view {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+            background: #0f1419;
+            display: none;
+        }
+
+        #dashboard-view.active {
+            display: block;
+        }
+
+        #dashboard-content {
+            max-width: 900px;
+            margin: 0 auto;
+            color: #fff;
+        }
+
+        #dashboard-content h1 {
+            font-size: 32px;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        #dashboard-content h2 {
+            font-size: 24px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            color: #4a90e2;
+            border-bottom: 2px solid #2a2f3e;
+            padding-bottom: 10px;
+        }
+
+        #dashboard-content h3 {
+            font-size: 18px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: #8a8fa5;
+        }
+
+        #dashboard-content p, #dashboard-content li {
+            line-height: 1.6;
+            color: #c0c5d0;
+            margin-bottom: 10px;
+        }
+
+        #dashboard-content ul, #dashboard-content ol {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        #dashboard-content code {
+            background: #1a1f2e;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #4a90e2;
+        }
+
+        #dashboard-content pre {
+            background: #1a1f2e;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        #dashboard-content pre code {
+            background: none;
+            padding: 0;
+            color: #c0c5d0;
+        }
+
+        #dashboard-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        #dashboard-content table th,
+        #dashboard-content table td {
+            border: 1px solid #2a2f3e;
+            padding: 10px;
+            text-align: left;
+        }
+
+        #dashboard-content table th {
+            background: #1a1f2e;
+            color: #4a90e2;
+        }
+
         #canvas {
             width: 100%;
             height: 100%;
+        }
+
+        /* GitHub CSV 선택 팝업 */
+        #csv-popup {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #csv-popup.active {
+            display: flex;
+        }
+
+        #csv-popup-content {
+            background: #1a1f2e;
+            border: 1px solid #2a2f3e;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        #csv-popup-content h3 {
+            margin-top: 0;
+            color: #fff;
+            margin-bottom: 15px;
+        }
+
+        #csv-file-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #csv-file-list li {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #2a2f3e;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: #fff;
+        }
+
+        #csv-file-list li:hover {
+            background: #3a3f4e;
+        }
+
+        #csv-popup-close {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #4a90e2;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #csv-popup-close:hover {
+            background: #5aa0f2;
         }
 
         #bottom-panel {
@@ -478,12 +638,14 @@
         <div class="nav-item" id="report-tab">Generate Report</div>
     </div>
 
-    <div id="container">
+    <div id="container" style="display: flex;">
         <div id="sidebar">
             <div class="sidebar-section">
                 <h3>File Load</h3>
                 <div id="file-input">
-                    <input type="file" id="csv-file" accept=".csv" />
+                    <button id="select-csv-btn" style="width: 100%; padding: 10px; background: #4a90e2; color: #fff; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 10px;">파일 선택</button>
+                    <div id="selected-file" style="font-size: 12px; color: #8a8fa5; margin-bottom: 10px;">선택된 파일 없음</div>
+                    <input type="file" id="csv-file" accept=".csv" style="display: none;" />
                     <div id="loading" style="display: none;">CSV 파일 처리 중...</div>
                 </div>
             </div>
@@ -624,6 +786,21 @@
         <div id="event-log"></div>
     </div>
 
+    <!-- Dashboard View -->
+    <div id="dashboard-view">
+        <div id="dashboard-content"></div>
+    </div>
+
+    <!-- GitHub CSV 선택 팝업 -->
+    <div id="csv-popup">
+        <div id="csv-popup-content">
+            <h3>GitHub에서 CSV 파일 선택</h3>
+            <div id="csv-loading" style="color: #8a8fa5;">파일 목록 로딩 중...</div>
+            <ul id="csv-file-list"></ul>
+            <button id="csv-popup-close">닫기</button>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <script>
@@ -665,11 +842,20 @@
                 this.setupFileInput();
                 this.setupTabs();
                 this.setupResizableBottom();
+                this.setupNavigation();
                 this.animate();
             }
 
             setupFileInput() {
+                const selectBtn = document.getElementById('select-csv-btn');
                 const inputEl = document.getElementById('csv-file');
+                
+                if (selectBtn) {
+                    selectBtn.addEventListener('click', () => {
+                        this.showCSVPopup();
+                    });
+                }
+                
                 if (!inputEl) {
                     console.error('파일 입력 요소(#csv-file)를 찾을 수 없습니다.');
                     return;
@@ -687,12 +873,481 @@
                     }
                     if (file) {
                         console.log('CSV 파일 선택됨:', file.name, file.size, 'bytes');
+                        document.getElementById('selected-file').textContent = file.name;
                         this.loadCSV(file);
                     } else {
                         console.warn('선택된 파일이 없습니다.');
                         if (loading) loading.style.display = 'none';
                     }
                 });
+
+                // 팝업 닫기 버튼
+                const closeBtn = document.getElementById('csv-popup-close');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => {
+                        document.getElementById('csv-popup').classList.remove('active');
+                    });
+                }
+            }
+
+            setupNavigation() {
+                const navItems = document.querySelectorAll('.nav-item');
+                navItems.forEach(item => {
+                    item.addEventListener('click', () => {
+                        const text = item.textContent.trim();
+                        if (text === 'Dashboard') {
+                            this.showDashboard();
+                        } else if (text === 'Investigate') {
+                            this.showInvestigate();
+                        } else {
+                            // 다른 탭들은 나중에 구현
+                            navItems.forEach(n => n.classList.remove('active'));
+                            item.classList.add('active');
+                        }
+                    });
+                });
+            }
+
+            showDashboard() {
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                document.querySelectorAll('.nav-item').forEach(n => {
+                    if (n.textContent.trim() === 'Dashboard') n.classList.add('active');
+                });
+                
+                const dashboardView = document.getElementById('dashboard-view');
+                const container = document.getElementById('container');
+                if (dashboardView && container) {
+                    container.style.display = 'none';
+                    dashboardView.classList.add('active');
+                    this.renderDashboard();
+                }
+            }
+
+            showInvestigate() {
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                document.querySelectorAll('.nav-item').forEach(n => {
+                    if (n.textContent.trim() === 'Investigate') n.classList.add('active');
+                });
+                
+                const dashboardView = document.getElementById('dashboard-view');
+                const container = document.getElementById('container');
+                if (dashboardView && container) {
+                    dashboardView.classList.remove('active');
+                    container.style.display = 'flex';
+                }
+            }
+
+            async renderDashboard() {
+                const content = document.getElementById('dashboard-content');
+                if (!content) return;
+
+                // README 내용을 HTML로 변환
+                const readmeContent = `# CS:GO Combat Simulation Platform
+
+CS:GO 데모 리플레이 데이터를 3D로 시뮬레이션하고 분석하는 종합 웹 플랫폼입니다. Getgud.io 스타일의 인터페이스로 전투 상황을 시각화하고, 플레이어 행동 패턴을 분석합니다.
+
+## 📋 목차
+
+1. [시뮬레이션 플랫폼 구성](#시뮬레이션-플랫폼-구성)
+2. [입력 데이터 구조](#입력-데이터-구조)
+3. [주요 기능](#주요-기능)
+4. [목적 및 가치](#목적-및-가치)
+5. [사용 방법](#사용-방법)
+
+---
+
+## 🏗️ 시뮬레이션 플랫폼 구성
+
+### 아키텍처
+- **프론트엔드**: 순수 HTML/CSS/JavaScript (Three.js 기반)
+- **백엔드**: 없음 (브라우저에서 직접 CSV 파일 처리)
+- **3D 엔진**: Three.js r128
+- **데이터 처리**: PapaParse (CSV 파싱)
+
+### UI 레이아웃
+
+\`\`\`
+┌─────────────────────────────────────────────────────────┐
+│  Top Navigation (Dashboard, Manage, Investigate)       │
+├──────────┬──────────────────────────────────────────────┤
+│          │                                              │
+│ Sidebar  │         3D Simulation Canvas                │
+│          │      (Three.js 렌더링 영역)                  │
+│ - File   │                                              │
+│ - Stats  │                                              │
+│ - Players│                                              │
+│          │                                              │
+├──────────┴──────────────────────────────────────────────┤
+│  Bottom Panel (드래그로 크기 조절 가능)                  │
+│  ├─ Controls (재생, 타임라인, 속도)                      │
+│  ├─ Tabs (Action Stream / Match Chat / Aim Trace)       │
+│  └─ Event Log / Aim Trace Visualization                 │
+└─────────────────────────────────────────────────────────┘
+\`\`\`
+
+---
+
+## 📊 입력 데이터 구조
+
+### 필수 CSV 컬럼
+
+#### 기본 정보
+- \`tick\`: 게임 틱 번호 (정수)
+- \`game_time\`: 게임 시간 (초, 실수)
+- \`round\`: 라운드 번호 (정수)
+- \`team_name\`: 팀명 (\`CT\` 또는 \`TERRORIST\`)
+- \`name\`: 플레이어 이름 (문자열)
+
+#### 플레이어 위치 (모든 틱에 존재)
+- \`X\`, \`Y\`, \`Z\`: 플레이어 3D 좌표 (실수)
+- \`health\`: 플레이어 체력 (0-100, 실수)
+
+#### 킬 이벤트 데이터 (킬 발생 시점에만 존재)
+- \`event\`: 이벤트 타입 (예: "kill", "died")
+- \`attacker_name\`: 공격자 이름
+- \`attacker_team_name\`: 공격자 팀
+- \`attacker_X\`, \`attacker_Y\`, \`attacker_Z\`: 공격자 위치
+- \`attacker_yaw\`, \`attacker_pitch\`: 공격자 마우스 조준 각도
+- \`attacker_health\`: 공격자 체력
+- \`victim_name\`: 피해자 이름
+- \`victim_team_name\`: 피해자 팀
+- \`victim_X\`, \`victim_Y\`, \`victim_Z\`: 피해자 위치
+- \`victim_health\`: 피해자 체력
+- \`weapon\`: 사용 무기
+- \`headshot\`: 헤드샷 여부 (boolean)
+
+### 데이터 특성
+
+- **시간 기반 시퀀스 데이터**: 각 행은 특정 틱의 스냅샷
+- **스파스 이벤트**: 킬 이벤트는 해당 틱에만 존재 (나머지 필드는 null)
+- **플레이어 추적**: 모든 틱에서 플레이어 위치 정보 제공
+- **좌표계**: Source 엔진 좌표계 (X: 좌우, Y: 전후, Z: 높이)
+
+---
+
+## 🎯 주요 기능
+
+### 1. 3D 시뮬레이션 시각화
+
+#### 플레이어 표현
+- **CT 팀**: 파란색 구형 마커
+- **T 팀**: 빨간색 삼각형 원뿔 마커
+- **플레이어 이름 라벨**: 큰 폰트(36px) + 팀 색상 테두리
+- **이동 경로 트레일**: 최근 100틱의 이동 경로 표시
+
+#### 맵 경계 및 구역
+- **자동 경계 계산**: 모든 플레이어 위치 기반으로 맵 경계 자동 산정
+- **구역 표시**: 10x10 그리드로 맵 구역 구분 (A1~C3 라벨)
+- **좌표축**: 중심점 기준 X, Y, Z 축 표시
+
+#### 킬 이벤트 시각화
+- **공격자 마커**: 빨간색 원뿔 (공격 위치)
+- **공격-피해 연결선**: 공격자에서 피해자로 빨간색 선
+- **피해자 라벨**: "KILLED" + "HEADSHOT" (헤드샷인 경우)
+- **페이드아웃**: 킬 발생 후 2-3초 동안 점진적으로 사라짐
+
+### 2. 인터랙티브 컨트롤
+
+#### 카메라 제어
+- **마우스 드래그**: 카메라 회전 (궤도 컨트롤)
+- **마우스 휠**: 줌 인/아웃 (맵 크기 기반 최소/최대 거리)
+- **Reset View**: 맵 중심으로 카메라 복귀
+
+#### 재생 컨트롤
+- **재생/일시정지**: ▶/⏸ 버튼
+- **타임라인**: 클릭으로 특정 시점 이동
+- **재생 속도**: 0.5x, 1x, 2x, 3x
+- **시간 표시**: 현재 시간 / 총 시간 (mm:ss.mmm 형식)
+
+### 3. 킬 이벤트 필터링 및 포커스
+
+#### Kill Event Picker (좌측 상단)
+- 드롭다운에서 킬 이벤트 선택
+- "Go" 버튼으로 해당 시점으로 즉시 이동
+- **포커스 모드**: 선택한 킬 이벤트 기준 ±30틱 범위 자동 설정
+  - 재생 범위가 해당 구간으로 제한
+  - 이벤트 로그도 해당 구간만 표시
+  - Aim Trace도 동일 구간으로 동기화
+
+#### Action Stream (하단)
+- 실시간 이벤트 로그
+- **색상 구분**:
+  - 시간: 파란색 (#6b9bd5)
+  - 공격자: 파란색 (#4a90e2)
+  - 동사: 회색 (#8a8fa5)
+  - 피해자: 빨간색 (#ff6b6b)
+  - 무기: 주황색 (#ffa500)
+- 이벤트 클릭 시 포커스 모드 활성화
+
+### 4. 플레이어 추적 시스템
+
+#### 플레이어 선택 (좌측 상단)
+- 드롭다운에서 플레이어 선택
+- **Prev/Next 버튼**: 선택한 플레이어의 이전/다음 시점으로 점프
+- **Follow 버튼**: 카메라가 선택한 플레이어를 따라가며 중앙에 배치
+  - 재생 중에도 플레이어 위치를 중심으로 카메라 자동 이동
+
+#### 플레이어 정보 (좌측 사이드바)
+- **K/D Ratio**: Kills / Deaths 표시
+- **플레이어 클릭**: 해당 플레이어가 참여한 첫 번째 킬 이벤트로 이동
+
+### 5. Aim Trace 분석
+
+#### 2D 조준 궤적 시각화
+- **좌표계**: 
+  - X축: Yaw (-180° ~ 180°)
+  - Y축: Pitch (-90° ~ 90°)
+- **포인트 색상**:
+  - 파란색: 현재 마우스 위치 (일반 이동)
+  - 노란색: 공격 시점 마우스 위치
+  - 빨간색: Hit 시점 마우스 위치
+  - 진빨강: Kill 시점 마우스 위치 (큰 원 + 테두리)
+- **현재 틱 하이라이트**: 재생 중인 틱의 마우스 위치를 큰 파란 점으로 표시
+
+#### 실시간 동기화
+- 재생 중 Aim Trace도 함께 업데이트
+- 포커스 모드 시 해당 구간(±30틱)만 표시
+- 킬 이벤트 선택 시 공격자의 Aim Trace 자동 표시
+
+#### 에임봇 탐지 지표
+- **Straightness Score**: 직선성 지표
+  - 계산식: 직선 거리 / 경로 길이
+  - 1에 가까울수록 직선 이동 (에임봇 의심)
+  - 제목에 실시간 표시
+
+### 6. 통계 정보 (좌측 사이드바)
+
+#### Match Info
+- **Title**: 게임 이름 (CS2)
+- **Game**: 서버, 모드, 시작 시간, 길이, 플레이어 수
+- **Match**: 매치 시작 시간, 길이, 모드, 맵 이름, 총 이벤트 수
+- **Map Bounds**: 맵 경계 좌표 및 크기
+- **Players**: 플레이어 목록 및 K/D Ratio
+
+### 7. UI 커스터마이징
+
+#### 하단 패널 크기 조절
+- 상단 가장자리를 드래그하여 높이 조절
+- 최소 160px, 최대 화면 높이의 80%
+- 설정은 localStorage에 저장되어 재방문 시 유지
+
+#### 탭 전환
+- **Action Stream**: 실시간 이벤트 로그
+- **Match Chat**: 채팅 로그 (향후 확장)
+- **Aim Trace**: 조준 궤적 분석
+
+---
+
+## 💡 목적 및 가치
+
+### 1. 전투 분석
+- **전술 분석**: 플레이어 위치, 이동 패턴, 전투 상황 파악
+- **킬 이벤트 상세 분석**: 공격자-피해자 관계, 무기 사용, 헤드샷 비율
+- **시간 기반 분석**: 특정 시점 전후 상황 추적
+
+### 2. 치팅 탐지
+- **에임봇 탐지**: Aim Trace의 직선성 분석으로 비정상적인 마우스 이동 패턴 식별
+- **행동 패턴 분석**: 플레이어별 이동 및 조준 패턴 비교
+- **의심도 지표**: Straightness Score로 객관적 평가
+
+### 3. 교육 및 학습
+- **전투 시뮬레이션**: 실제 경기 상황을 3D로 재현하여 학습
+- **플레이어 추적**: 개별 플레이어의 움직임과 전술 분석
+- **실시간 재생**: 다양한 속도로 상황 재현
+
+### 4. 데이터 시각화
+- **대규모 데이터 처리**: 수만 줄의 CSV 데이터를 실시간으로 처리
+- **인터랙티브 탐색**: 클릭, 드래그, 필터링으로 원하는 정보 즉시 접근
+- **맵 기반 시각화**: 3D 공간에서 플레이어 위치와 이벤트를 직관적으로 표시
+
+---
+
+## 🚀 사용 방법
+
+### 1. 파일 준비
+- CSV 파일 준비: \`sample_dataset_kill_tick_info.csv\` 형식 준수
+
+### 2. 브라우저에서 실행
+\`\`\`bash
+# 파일 탐색기에서 simulation_enhanced.html 더블클릭
+# 또는
+explorer simulation_enhanced.html
+\`\`\`
+
+### 3. 데이터 로드
+1. 좌측 사이드바 "File Load" 섹션에서 CSV 파일 선택
+2. 처리 완료까지 대기 (진행 상황 콘솔에 표시)
+
+### 4. 시뮬레이션 탐색
+- **3D 시각화**: 캔버스에서 마우스로 카메라 조작
+- **킬 이벤트 선택**: 좌측 상단 Kill Event Picker에서 선택
+- **플레이어 추적**: Players 드롭다운에서 플레이어 선택 후 Follow 활성화
+- **Aim Trace 분석**: 하단 Aim Trace 탭에서 조준 궤적 확인
+
+### 5. 포커스 모드 활용
+1. 킬 이벤트 선택 (Event Picker 또는 Action Stream)
+2. 자동으로 ±30틱 범위 설정
+3. 재생 버튼으로 해당 구간 반복 재생
+4. Aim Trace에서 공격자의 마우스 이동 패턴 확인
+
+---
+
+## 🎮 컨트롤 요약
+
+| 입력 | 동작 |
+|------|------|
+| 마우스 드래그 | 카메라 회전 |
+| 마우스 휠 | 줌 인/아웃 |
+| 재생 버튼 | 시뮬레이션 시작/일시정지 |
+| 타임라인 클릭 | 특정 시점으로 이동 |
+| 속도 버튼 | 재생 속도 조절 (0.5x ~ 3x) |
+| 하단 패널 상단 가장자리 드래그 | 패널 높이 조절 |
+| ESC 키 | 포커스 모드 종료 |
+
+---
+
+## 🔧 기술 스택
+
+- **Three.js r128**: 3D 렌더링
+- **PapaParse**: CSV 파싱
+- **Canvas API**: 2D 그래프 및 라벨 렌더링
+- **LocalStorage**: UI 설정 저장
+- **순수 JavaScript**: 외부 프레임워크 없이 구현
+
+---
+
+## 📝 향후 개선 가능 사항
+
+- [ ] 실제 CS:GO 맵 텍스처 및 지형 로드
+- [ ] 다중 플레이어 동시 추적
+- [ ] 히트맵 시각화
+- [ ] 통계 대시보드 확장
+- [ ] 에임봇 탐지 알고리즘 고도화
+- [ ] 데이터 내보내기 기능
+
+---
+
+## 📄 라이선스
+
+이 프로젝트는 교육 및 연구 목적으로 제작되었습니다.`;
+
+                // 간단한 마크다운 파서 (기본적인 변환)
+                content.innerHTML = this.markdownToHTML(readmeContent);
+            }
+
+            markdownToHTML(markdown) {
+                let html = markdown;
+                
+                // 헤더 변환
+                html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+                html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+                html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+                
+                // 코드 블록
+                html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+                html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+                
+                // 리스트
+                html = html.replace(/^- (.*$)/gim, '<li>$1</li>');
+                html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+                
+                // 테이블 (간단한 처리)
+                html = html.replace(/\|(.+)\|/g, (match) => {
+                    const cells = match.split('|').filter(c => c.trim());
+                    if (cells.length > 0) {
+                        return '<tr>' + cells.map(c => '<td>' + c.trim() + '</td>').join('') + '</tr>';
+                    }
+                    return match;
+                });
+                
+                // 단락
+                html = html.replace(/\n\n/g, '</p><p>');
+                html = '<p>' + html + '</p>';
+                
+                // 줄바꿈
+                html = html.replace(/\n/g, '<br>');
+                
+                return html;
+            }
+
+            async showCSVPopup() {
+                const popup = document.getElementById('csv-popup');
+                const fileList = document.getElementById('csv-file-list');
+                const loading = document.getElementById('csv-loading');
+                
+                if (!popup || !fileList) return;
+                
+                popup.classList.add('active');
+                fileList.innerHTML = '';
+                loading.style.display = 'block';
+                
+                try {
+                    // GitHub API로 CSV 파일 목록 가져오기
+                    const repo = 'bangilhan/fps_combat_simulation';
+                    const response = await fetch(`https://api.github.com/repos/${repo}/contents`);
+                    const files = await response.json();
+                    
+                    // CSV 파일만 필터링
+                    const csvFiles = files.filter(file => 
+                        file.type === 'file' && file.name.endsWith('.csv')
+                    );
+                    
+                    loading.style.display = 'none';
+                    
+                    if (csvFiles.length === 0) {
+                        fileList.innerHTML = '<li style="color: #8a8fa5;">CSV 파일을 찾을 수 없습니다.</li>';
+                        return;
+                    }
+                    
+                    csvFiles.forEach(file => {
+                        const li = document.createElement('li');
+                        li.textContent = file.name;
+                        li.addEventListener('click', () => {
+                            this.loadCSVFromGitHub(file.download_url, file.name);
+                            popup.classList.remove('active');
+                        });
+                        fileList.appendChild(li);
+                    });
+                } catch (error) {
+                    console.error('GitHub 파일 목록 가져오기 실패:', error);
+                    loading.style.display = 'none';
+                    fileList.innerHTML = '<li style="color: #ff6b6b;">파일 목록을 가져오는 중 오류가 발생했습니다.</li>';
+                }
+            }
+
+            async loadCSVFromGitHub(url, filename) {
+                const loading = document.getElementById('loading');
+                const selectedFile = document.getElementById('selected-file');
+                
+                if (loading) {
+                    loading.style.display = 'block';
+                    loading.innerHTML = 'GitHub에서 CSV 파일 다운로드 중...';
+                }
+                
+                if (selectedFile) {
+                    selectedFile.textContent = filename;
+                }
+                
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const text = await response.text();
+                    
+                    // 텍스트를 Blob으로 변환하여 File 객체처럼 사용
+                    const blob = new Blob([text], { type: 'text/csv' });
+                    const file = new File([blob], filename, { type: 'text/csv' });
+                    
+                    await this.loadCSV(file);
+                } catch (error) {
+                    console.error('CSV 파일 다운로드 실패:', error);
+                    if (loading) {
+                        loading.innerHTML = '오류: ' + error.message;
+                    }
+                    alert('CSV 파일을 다운로드하는 중 오류가 발생했습니다: ' + error.message);
+                }
             }
 
             setupTabs() {
