@@ -1262,10 +1262,31 @@ explorer simulation_enhanced.html
             markdownToHTML(markdown) {
                 let html = markdown;
                 
-                // 헤더 변환
-                html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
-                html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
-                html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+                // 헤더에 ID 추가를 위한 헬퍼 함수
+                const createId = (text) => {
+                    return text.toLowerCase()
+                        .replace(/[^\w\u3131-\u318E\uAC00-\uD7A3]+/g, '-')
+                        .replace(/^-+|-+$/g, '');
+                };
+                
+                // 링크 변환 (헤더 변환 전에 처리)
+                html = html.replace(/\[([^\]]+)\]\(#([^\)]+)\)/g, (match, text, anchor) => {
+                    return `<a href="#${anchor}" style="color: #4a90e2; text-decoration: none; border-bottom: 1px solid #4a90e2;">${text}</a>`;
+                });
+                
+                // 헤더 변환 (ID 포함)
+                html = html.replace(/^### (.*$)/gim, (match, text) => {
+                    const id = createId(text);
+                    return `<h3 id="${id}">${text}</h3>`;
+                });
+                html = html.replace(/^## (.*$)/gim, (match, text) => {
+                    const id = createId(text);
+                    return `<h2 id="${id}">${text}</h2>`;
+                });
+                html = html.replace(/^# (.*$)/gim, (match, text) => {
+                    const id = createId(text);
+                    return `<h1 id="${id}">${text}</h1>`;
+                });
                 
                 // 코드 블록
                 html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
@@ -1290,6 +1311,20 @@ explorer simulation_enhanced.html
                 
                 // 줄바꿈
                 html = html.replace(/\n/g, '<br>');
+                
+                // 앵커 링크 클릭 시 부드러운 스크롤
+                setTimeout(() => {
+                    document.querySelectorAll('#dashboard-content a[href^="#"]').forEach(link => {
+                        link.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            const targetId = link.getAttribute('href').substring(1);
+                            const targetElement = document.getElementById(targetId);
+                            if (targetElement) {
+                                targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                        });
+                    });
+                }, 100);
                 
                 return html;
             }
