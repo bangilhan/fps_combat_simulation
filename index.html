@@ -655,9 +655,9 @@
                 <div id="brand-tagline">"Follow every trace." 🍞</div>
             </div>
         </div>
-        <div class="nav-item active">Dashboard</div>
-        <div class="nav-item">Investigate</div>
-        <div class="nav-item" id="report-tab">Generate Report</div>
+        <div class="nav-item active">Info</div>
+        <div class="nav-item">3D 시뮬레이션 분석</div>
+        <div class="nav-item" id="report-tab">분석 보고서</div>
     </div>
 
     <div id="container" style="display: none;">
@@ -967,9 +967,9 @@
                 navItems.forEach(item => {
                     item.addEventListener('click', () => {
                         const text = item.textContent.trim();
-                        if (text === 'Dashboard') {
+                        if (text === 'Info') {
                             this.showDashboard();
-                        } else if (text === 'Investigate') {
+                        } else if (text === '3D 시뮬레이션 분석') {
                             this.showInvestigate();
                         } else {
                             // 다른 탭들은 나중에 구현
@@ -983,7 +983,7 @@
             showDashboard() {
                 document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
                 document.querySelectorAll('.nav-item').forEach(n => {
-                    if (n.textContent.trim() === 'Dashboard') n.classList.add('active');
+                    if (n.textContent.trim() === 'Info') n.classList.add('active');
                 });
                 
                 const dashboardView = document.getElementById('dashboard-view');
@@ -1004,7 +1004,7 @@
             showInvestigate() {
                 document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
                 document.querySelectorAll('.nav-item').forEach(n => {
-                    if (n.textContent.trim() === 'Investigate') n.classList.add('active');
+                    if (n.textContent.trim() === '3D 시뮬레이션 분석') n.classList.add('active');
                 });
                 
                 const dashboardView = document.getElementById('dashboard-view');
@@ -1073,7 +1073,7 @@
 
 ## 🚀 빠른 시작
 
-1. **Investigate** 탭 클릭
+1. **3D 시뮬레이션 분석** 탭 클릭
 2. 좌측 사이드바 **"파일 선택"** 버튼 클릭
 3. GitHub CSV 파일 선택
 4. 3D 시뮬레이션 자동 시작
@@ -1179,10 +1179,10 @@ Three.js · PapaParse · 순수 JavaScript`;
                             const dashboardView = document.getElementById('dashboard-view');
                             const container = document.getElementById('container');
                             if (dashboardView && !dashboardView.classList.contains('active')) {
-                                // Dashboard 탭 활성화
+                                // Info 탭 활성화
                                 document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
                                 document.querySelectorAll('.nav-item').forEach(n => {
-                                    if (n.textContent.trim() === 'Dashboard') n.classList.add('active');
+                                    if (n.textContent.trim() === 'Info') n.classList.add('active');
                                 });
                                 
                                 // Dashboard 뷰 표시
@@ -1707,12 +1707,12 @@ Three.js · PapaParse · 순수 JavaScript`;
                     this.populateKillPicker();
                     this.populatePlayerPicker();
                     
-                    // 파일 로드 후 Investigate 탭으로 자동 전환
+                    // 파일 로드 후 3D 시뮬레이션 분석 탭으로 자동 전환
                     this.showInvestigate();
                     
                     // 시뮬레이션 렌더링 초기화
                     setTimeout(() => {
-                        this.renderTick(0);
+                    this.renderTick(0);
                         // renderer 크기 재조정 (container가 숨겨져 있을 수 있음)
                         const container = document.getElementById('canvas-container');
                         if (container && this.renderer) {
@@ -2760,9 +2760,9 @@ Three.js · PapaParse · 순수 JavaScript`;
                             this.panOffset.z += up.z * deltaY * panSpeed;
                         } else {
                             // 일반 모드: 카메라 회전
-                            this.cameraRotationY += deltaX * 0.01;
-                            this.cameraRotationX += deltaY * 0.01;
-                            this.cameraRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.cameraRotationX));
+                        this.cameraRotationY += deltaX * 0.01;
+                        this.cameraRotationX += deltaY * 0.01;
+                        this.cameraRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.cameraRotationX));
                         }
                         mouseX = e.clientX;
                         mouseY = e.clientY;
@@ -2843,7 +2843,7 @@ Three.js · PapaParse · 순수 JavaScript`;
                     const maxDist = this.baseCameraDistance * 10.0;
                     this.cameraDistance = Math.max(minDist, Math.min(maxDist, this.cameraDistance));
                 });
-                
+
                 this.updateCamera = () => {
                     // 타겟이 설정되어 있으면 타겟 중심, 없으면 맵 중심
                     if (this.cameraTarget) {
@@ -3407,9 +3407,9 @@ Three.js · PapaParse · 순수 JavaScript`;
                         ctx.fillText(labelText, canvas.width / 2, yPos);
                     } else {
                         // 일반 플레이어는 기존대로
-                        ctx.fillStyle = '#ffffff';
-                        ctx.font = 'bold 36px Arial';
-                        ctx.textAlign = 'center';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 36px Arial';
+                    ctx.textAlign = 'center';
                         ctx.fillText(player.name, canvas.width / 2, yPos);
                     }
                     
@@ -3736,8 +3736,8 @@ Three.js · PapaParse · 순수 JavaScript`;
         (function() {
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => {
-                    new CombatSimulation();
-                });
+            new CombatSimulation();
+        });
             } else {
                 // DOM이 이미 로드된 경우 즉시 실행
                 new CombatSimulation();
