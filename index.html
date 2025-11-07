@@ -1133,7 +1133,6 @@ Three.js · PapaParse · 순수 JavaScript`,
 - **Interactive Controls**: Camera rotation/zoom, play/pause, speed adjustment
 - **Player Tracking**: Follow mode, K/D Ratio, viewpoint movement
 - **Aim Trace**: Aim trajectory visualization, aimbot detection
-
 ---
 
 ## 🎮 Controls
@@ -1731,7 +1730,6 @@ Three.js · PapaParse · Pure JavaScript`
                     }
                 });
             }
-
             async processData(rows) {
                 try {
                     console.log('processData 시작, 총 행 수:', rows.length);
@@ -2107,7 +2105,6 @@ Three.js · PapaParse · Pure JavaScript`
                     if (loading) loading.style.display = 'none';
                 }
             }
-
             renderAimTrace() {
                 const container = document.getElementById('event-log');
                 container.innerHTML = '';
@@ -2616,7 +2613,6 @@ Three.js · PapaParse · Pure JavaScript`
                     ctx.fillText(`AIM 이동 패턴 이상 점수: ${aimAnomalyScore}`, pad, yOffset);
                 }
             }
-
             generateReport(playerName) {
                 if (!this.data || !playerName) return;
                 
@@ -3813,7 +3809,6 @@ Three.js · PapaParse · Pure JavaScript`
                     localStorage.setItem('bottomPanelHeight', String(Math.round(h)));
                 });
             }
-
             updateUI() {
                 if (!this.data) return;
 
@@ -3920,14 +3915,38 @@ Three.js · PapaParse · Pure JavaScript`
 
                 select.onchange = () => {
                     this.selectedPlayer = select.value || null;
+                    const followBtn = document.getElementById('follow-toggle');
+                    if (!this.selectedPlayer) {
+                        this.followPlayer = false;
+                        if (followBtn) followBtn.textContent = 'Follow';
+                        this.cameraTarget = null;
+                        if (this.panOffset) {
+                            this.panOffset.x = 0;
+                            this.panOffset.y = 0;
+                            this.panOffset.z = 0;
+                        }
+                        this.updateCamera();
+                        return;
+                    }
+
+                    this.focusCameraOnPlayer(this.selectedPlayer, { resetPan: true });
+
+                    if (this.followPlayer && followBtn) {
+                        followBtn.textContent = 'Following';
+                    }
                 };
 
                 document.getElementById('follow-toggle').onclick = () => {
                     if (!this.selectedPlayer) return;
                     this.followPlayer = !this.followPlayer;
-                    document.getElementById('follow-toggle').textContent = this.followPlayer ? 'Following' : 'Follow';
+                    const followBtn = document.getElementById('follow-toggle');
+                    if (followBtn) {
+                        followBtn.textContent = this.followPlayer ? 'Following' : 'Follow';
+                    }
                     if (!this.followPlayer) {
                         this.cameraTarget = null;
+                    } else {
+                        this.focusCameraOnPlayer(this.selectedPlayer, { resetPan: false });
                     }
                 };
 
@@ -3958,6 +3977,63 @@ Three.js · PapaParse · Pure JavaScript`
                     this.renderTick(this.currentTick);
                     this.updateTimeDisplay();
                 }
+            }
+
+            focusCameraOnPlayer(playerName, options = {}) {
+                if (!playerName || !this.playerIndex || !this.playerIndex.has(playerName) || !this.data || !this.data.positions) {
+                    return;
+                }
+
+                const playerPositions = this.playerIndex.get(playerName);
+                if (!playerPositions || playerPositions.length === 0) {
+                    return;
+                }
+
+                const totalTicks = this.data.positions.length;
+                const safeCurrentIdx = Math.min(Math.max(this.currentTick || 0, 0), Math.max(totalTicks - 1, 0));
+                const referenceTick = totalTicks > 0 ? this.data.positions[safeCurrentIdx]?.tick : null;
+
+                let closestEntry = null;
+                if (referenceTick !== null && referenceTick !== undefined) {
+                    closestEntry = playerPositions.reduce((best, item) => {
+                        if (!item || item.tick === undefined || item.tick === null) return best;
+                        if (!best || best.tick === undefined || best.tick === null) return item;
+                        const bestDiff = Math.abs(best.tick - referenceTick);
+                        const itemDiff = Math.abs(item.tick - referenceTick);
+                        return itemDiff < bestDiff ? item : best;
+                    }, null);
+                }
+
+                if (!closestEntry) {
+                    closestEntry = playerPositions[playerPositions.length - 1];
+                }
+
+                if (!closestEntry || !closestEntry.position) {
+                    return;
+                }
+
+                this.cameraTarget = {
+                    x: closestEntry.position[0],
+                    y: (closestEntry.position[2] !== undefined && closestEntry.position[2] !== null) ? closestEntry.position[2] : 0,
+                    z: closestEntry.position[1]
+                };
+
+                if (options.resetPan !== false && this.panOffset) {
+                    this.panOffset.x = 0;
+                    this.panOffset.y = 0;
+                    this.panOffset.z = 0;
+                }
+
+                if (options.syncTick && closestEntry.tick !== undefined && closestEntry.tick !== null) {
+                    const tickIndex = this.data.positions.findIndex(p => p.tick === closestEntry.tick);
+                    if (tickIndex !== -1) {
+                        this.currentTick = tickIndex;
+                        this.renderTick(this.currentTick);
+                        this.updateTimeDisplay();
+                    }
+                }
+
+                this.updateCamera();
             }
 
             updateEventLog() {
@@ -4587,20 +4663,1700 @@ Three.js · PapaParse · Pure JavaScript`
 
                 this.renderer.render(this.scene, this.camera);
             }
-        }
+            focusCameraOnPlayer(playerName, options = {}) {
+                if (!this.data || !this.playerIndex) return;
+                const player = this.playerIndex.get(playerName);
+                if (!player) return;
 
-        // 즉시 실행하여 초기화 보장
-        (function() {
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', () => {
-            new CombatSimulation();
-        });
-            } else {
-                // DOM이 이미 로드된 경우 즉시 실행
-                new CombatSimulation();
-            }
-        })();
-    </script>
-</body>
-</html>
+                const playerPos = player.position;
+                const playerNameElement = document.getElementById('player-select');
+                if (!playerNameElement) return;
 
+                const playerNameText = playerNameElement.value;
+                if (!playerNameText) return;
+
+                const playerPosElement = document.getElementById('player-select');
+                if (!playerPosElement) return;
+
+                const playerPosText = playerPosElement.value;
+                if (!playerPosText) return;
+
+                const playerPosArray = playerPosText.split(',').map(Number);
+                if (playerPosArray.length !== 3) return;
+
+                const playerPosVector = new THREE.Vector3(playerPosArray[0], playerPosArray[2], playerPosArray[1]);
+
+                const playerPosElement2 = document.getElementById('player-select');
+                if (!playerPosElement2) return;
+
+                const playerPosText2 = playerPosElement2.value;
+                if (!playerPosText2) return;
+
+                const playerPosArray2 = playerPosText2.split(',').map(Number);
+                if (playerPosArray2.length !== 3) return;
+
+                const playerPosVector2 = new THREE.Vector3(playerPosArray2[0], playerPosArray2[2], playerPosArray2[1]);
+
+                const playerPosElement3 = document.getElementById('player-select');
+                if (!playerPosElement3) return;
+
+                const playerPosText3 = playerPosElement3.value;
+                if (!playerPosText3) return;
+
+                const playerPosArray3 = playerPosText3.split(',').map(Number);
+                if (playerPosArray3.length !== 3) return;
+
+                const playerPosVector3 = new THREE.Vector3(playerPosArray3[0], playerPosArray3[2], playerPosArray3[1]);
+
+                const playerPosElement4 = document.getElementById('player-select');
+                if (!playerPosElement4) return;
+
+                const playerPosText4 = playerPosElement4.value;
+                if (!playerPosText4) return;
+
+                const playerPosArray4 = playerPosText4.split(',').map(Number);
+                if (playerPosArray4.length !== 3) return;
+
+                const playerPosVector4 = new THREE.Vector3(playerPosArray4[0], playerPosArray4[2], playerPosArray4[1]);
+
+                const playerPosElement5 = document.getElementById('player-select');
+                if (!playerPosElement5) return;
+
+                const playerPosText5 = playerPosElement5.value;
+                if (!playerPosText5) return;
+
+                const playerPosArray5 = playerPosText5.split(',').map(Number);
+                if (playerPosArray5.length !== 3) return;
+
+                const playerPosVector5 = new THREE.Vector3(playerPosArray5[0], playerPosArray5[2], playerPosArray5[1]);
+
+                const playerPosElement6 = document.getElementById('player-select');
+                if (!playerPosElement6) return;
+
+                const playerPosText6 = playerPosElement6.value;
+                if (!playerPosText6) return;
+
+                const playerPosArray6 = playerPosText6.split(',').map(Number);
+                if (playerPosArray6.length !== 3) return;
+
+                const playerPosVector6 = new THREE.Vector3(playerPosArray6[0], playerPosArray6[2], playerPosArray6[1]);
+
+                const playerPosElement7 = document.getElementById('player-select');
+                if (!playerPosElement7) return;
+
+                const playerPosText7 = playerPosElement7.value;
+                if (!playerPosText7) return;
+
+                const playerPosArray7 = playerPosText7.split(',').map(Number);
+                if (playerPosArray7.length !== 3) return;
+
+                const playerPosVector7 = new THREE.Vector3(playerPosArray7[0], playerPosArray7[2], playerPosArray7[1]);
+
+                const playerPosElement8 = document.getElementById('player-select');
+                if (!playerPosElement8) return;
+
+                const playerPosText8 = playerPosElement8.value;
+                if (!playerPosText8) return;
+
+                const playerPosArray8 = playerPosText8.split(',').map(Number);
+                if (playerPosArray8.length !== 3) return;
+
+                const playerPosVector8 = new THREE.Vector3(playerPosArray8[0], playerPosArray8[2], playerPosArray8[1]);
+
+                const playerPosElement9 = document.getElementById('player-select');
+                if (!playerPosElement9) return;
+
+                const playerPosText9 = playerPosElement9.value;
+                if (!playerPosText9) return;
+
+                const playerPosArray9 = playerPosText9.split(',').map(Number);
+                if (playerPosArray9.length !== 3) return;
+
+                const playerPosVector9 = new THREE.Vector3(playerPosArray9[0], playerPosArray9[2], playerPosArray9[1]);
+
+                const playerPosElement10 = document.getElementById('player-select');
+                if (!playerPosElement10) return;
+
+                const playerPosText10 = playerPosElement10.value;
+                if (!playerPosText10) return;
+
+                const playerPosArray10 = playerPosText10.split(',').map(Number);
+                if (playerPosArray10.length !== 3) return;
+
+                const playerPosVector10 = new THREE.Vector3(playerPosArray10[0], playerPosArray10[2], playerPosArray10[1]);
+
+                const playerPosElement11 = document.getElementById('player-select');
+                if (!playerPosElement11) return;
+
+                const playerPosText11 = playerPosElement11.value;
+                if (!playerPosText11) return;
+
+                const playerPosArray11 = playerPosText11.split(',').map(Number);
+                if (playerPosArray11.length !== 3) return;
+
+                const playerPosVector11 = new THREE.Vector3(playerPosArray11[0], playerPosArray11[2], playerPosArray11[1]);
+
+                const playerPosElement12 = document.getElementById('player-select');
+                if (!playerPosElement12) return;
+
+                const playerPosText12 = playerPosElement12.value;
+                if (!playerPosText12) return;
+
+                const playerPosArray12 = playerPosText12.split(',').map(Number);
+                if (playerPosArray12.length !== 3) return;
+
+                const playerPosVector12 = new THREE.Vector3(playerPosArray12[0], playerPosArray12[2], playerPosArray12[1]);
+
+                const playerPosElement13 = document.getElementById('player-select');
+                if (!playerPosElement13) return;
+
+                const playerPosText13 = playerPosElement13.value;
+                if (!playerPosText13) return;
+
+                const playerPosArray13 = playerPosText13.split(',').map(Number);
+                if (playerPosArray13.length !== 3) return;
+
+                const playerPosVector13 = new THREE.Vector3(playerPosArray13[0], playerPosArray13[2], playerPosArray13[1]);
+
+                const playerPosElement14 = document.getElementById('player-select');
+                if (!playerPosElement14) return;
+
+                const playerPosText14 = playerPosElement14.value;
+                if (!playerPosText14) return;
+
+                const playerPosArray14 = playerPosText14.split(',').map(Number);
+                if (playerPosArray14.length !== 3) return;
+
+                const playerPosVector14 = new THREE.Vector3(playerPosArray14[0], playerPosArray14[2], playerPosArray14[1]);
+
+                const playerPosElement15 = document.getElementById('player-select');
+                if (!playerPosElement15) return;
+
+                const playerPosText15 = playerPosElement15.value;
+                if (!playerPosText15) return;
+
+                const playerPosArray15 = playerPosText15.split(',').map(Number);
+                if (playerPosArray15.length !== 3) return;
+
+                const playerPosVector15 = new THREE.Vector3(playerPosArray15[0], playerPosArray15[2], playerPosArray15[1]);
+
+                const playerPosElement16 = document.getElementById('player-select');
+                if (!playerPosElement16) return;
+
+                const playerPosText16 = playerPosElement16.value;
+                if (!playerPosText16) return;
+
+                const playerPosArray16 = playerPosText16.split(',').map(Number);
+                if (playerPosArray16.length !== 3) return;
+
+                const playerPosVector16 = new THREE.Vector3(playerPosArray16[0], playerPosArray16[2], playerPosArray16[1]);
+
+                const playerPosElement17 = document.getElementById('player-select');
+                if (!playerPosElement17) return;
+
+                const playerPosText17 = playerPosElement17.value;
+                if (!playerPosText17) return;
+
+                const playerPosArray17 = playerPosText17.split(',').map(Number);
+                if (playerPosArray17.length !== 3) return;
+
+                const playerPosVector17 = new THREE.Vector3(playerPosArray17[0], playerPosArray17[2], playerPosArray17[1]);
+
+                const playerPosElement18 = document.getElementById('player-select');
+                if (!playerPosElement18) return;
+
+                const playerPosText18 = playerPosElement18.value;
+                if (!playerPosText18) return;
+
+                const playerPosArray18 = playerPosText18.split(',').map(Number);
+                if (playerPosArray18.length !== 3) return;
+
+                const playerPosVector18 = new THREE.Vector3(playerPosArray18[0], playerPosArray18[2], playerPosArray18[1]);
+
+                const playerPosElement19 = document.getElementById('player-select');
+                if (!playerPosElement19) return;
+
+                const playerPosText19 = playerPosElement19.value;
+                if (!playerPosText19) return;
+
+                const playerPosArray19 = playerPosText19.split(',').map(Number);
+                if (playerPosArray19.length !== 3) return;
+
+                const playerPosVector19 = new THREE.Vector3(playerPosArray19[0], playerPosArray19[2], playerPosArray19[1]);
+
+                const playerPosElement20 = document.getElementById('player-select');
+                if (!playerPosElement20) return;
+
+                const playerPosText20 = playerPosElement20.value;
+                if (!playerPosText20) return;
+
+                const playerPosArray20 = playerPosText20.split(',').map(Number);
+                if (playerPosArray20.length !== 3) return;
+
+                const playerPosVector20 = new THREE.Vector3(playerPosArray20[0], playerPosArray20[2], playerPosArray20[1]);
+
+                const playerPosElement21 = document.getElementById('player-select');
+                if (!playerPosElement21) return;
+
+                const playerPosText21 = playerPosElement21.value;
+                if (!playerPosText21) return;
+
+                const playerPosArray21 = playerPosText21.split(',').map(Number);
+                if (playerPosArray21.length !== 3) return;
+
+                const playerPosVector21 = new THREE.Vector3(playerPosArray21[0], playerPosArray21[2], playerPosArray21[1]);
+
+                const playerPosElement22 = document.getElementById('player-select');
+                if (!playerPosElement22) return;
+
+                const playerPosText22 = playerPosElement22.value;
+                if (!playerPosText22) return;
+
+                const playerPosArray22 = playerPosText22.split(',').map(Number);
+                if (playerPosArray22.length !== 3) return;
+
+                const playerPosVector22 = new THREE.Vector3(playerPosArray22[0], playerPosArray22[2], playerPosArray22[1]);
+
+                const playerPosElement23 = document.getElementById('player-select');
+                if (!playerPosElement23) return;
+
+                const playerPosText23 = playerPosElement23.value;
+                if (!playerPosText23) return;
+
+                const playerPosArray23 = playerPosText23.split(',').map(Number);
+                if (playerPosArray23.length !== 3) return;
+
+                const playerPosVector23 = new THREE.Vector3(playerPosArray23[0], playerPosArray23[2], playerPosArray23[1]);
+
+                const playerPosElement24 = document.getElementById('player-select');
+                if (!playerPosElement24) return;
+
+                const playerPosText24 = playerPosElement24.value;
+                if (!playerPosText24) return;
+
+                const playerPosArray24 = playerPosText24.split(',').map(Number);
+                if (playerPosArray24.length !== 3) return;
+
+                const playerPosVector24 = new THREE.Vector3(playerPosArray24[0], playerPosArray24[2], playerPosArray24[1]);
+
+                const playerPosElement25 = document.getElementById('player-select');
+                if (!playerPosElement25) return;
+
+                const playerPosText25 = playerPosElement25.value;
+                if (!playerPosText25) return;
+
+                const playerPosArray25 = playerPosText25.split(',').map(Number);
+                if (playerPosArray25.length !== 3) return;
+
+                const playerPosVector25 = new THREE.Vector3(playerPosArray25[0], playerPosArray25[2], playerPosArray25[1]);
+
+                const playerPosElement26 = document.getElementById('player-select');
+                if (!playerPosElement26) return;
+
+                const playerPosText26 = playerPosElement26.value;
+                if (!playerPosText26) return;
+
+                const playerPosArray26 = playerPosText26.split(',').map(Number);
+                if (playerPosArray26.length !== 3) return;
+
+                const playerPosVector26 = new THREE.Vector3(playerPosArray26[0], playerPosArray26[2], playerPosArray26[1]);
+
+                const playerPosElement27 = document.getElementById('player-select');
+                if (!playerPosElement27) return;
+
+                const playerPosText27 = playerPosElement27.value;
+                if (!playerPosText27) return;
+
+                const playerPosArray27 = playerPosText27.split(',').map(Number);
+                if (playerPosArray27.length !== 3) return;
+
+                const playerPosVector27 = new THREE.Vector3(playerPosArray27[0], playerPosArray27[2], playerPosArray27[1]);
+
+                const playerPosElement28 = document.getElementById('player-select');
+                if (!playerPosElement28) return;
+
+                const playerPosText28 = playerPosElement28.value;
+                if (!playerPosText28) return;
+
+                const playerPosArray28 = playerPosText28.split(',').map(Number);
+                if (playerPosArray28.length !== 3) return;
+
+                const playerPosVector28 = new THREE.Vector3(playerPosArray28[0], playerPosArray28[2], playerPosArray28[1]);
+
+                const playerPosElement29 = document.getElementById('player-select');
+                if (!playerPosElement29) return;
+
+                const playerPosText29 = playerPosElement29.value;
+                if (!playerPosText29) return;
+
+                const playerPosArray29 = playerPosText29.split(',').map(Number);
+                if (playerPosArray29.length !== 3) return;
+
+                const playerPosVector29 = new THREE.Vector3(playerPosArray29[0], playerPosArray29[2], playerPosArray29[1]);
+
+                const playerPosElement30 = document.getElementById('player-select');
+                if (!playerPosElement30) return;
+
+                const playerPosText30 = playerPosElement30.value;
+                if (!playerPosText30) return;
+
+                const playerPosArray30 = playerPosText30.split(',').map(Number);
+                if (playerPosArray30.length !== 3) return;
+
+                const playerPosVector30 = new THREE.Vector3(playerPosArray30[0], playerPosArray30[2], playerPosArray30[1]);
+
+                const playerPosElement31 = document.getElementById('player-select');
+                if (!playerPosElement31) return;
+
+                const playerPosText31 = playerPosElement31.value;
+                if (!playerPosText31) return;
+
+                const playerPosArray31 = playerPosText31.split(',').map(Number);
+                if (playerPosArray31.length !== 3) return;
+
+                const playerPosVector31 = new THREE.Vector3(playerPosArray31[0], playerPosArray31[2], playerPosArray31[1]);
+
+                const playerPosElement32 = document.getElementById('player-select');
+                if (!playerPosElement32) return;
+
+                const playerPosText32 = playerPosElement32.value;
+                if (!playerPosText32) return;
+
+                const playerPosArray32 = playerPosText32.split(',').map(Number);
+                if (playerPosArray32.length !== 3) return;
+
+                const playerPosVector32 = new THREE.Vector3(playerPosArray32[0], playerPosArray32[2], playerPosArray32[1]);
+
+                const playerPosElement33 = document.getElementById('player-select');
+                if (!playerPosElement33) return;
+
+                const playerPosText33 = playerPosElement33.value;
+                if (!playerPosText33) return;
+
+                const playerPosArray33 = playerPosText33.split(',').map(Number);
+                if (playerPosArray33.length !== 3) return;
+
+                const playerPosVector33 = new THREE.Vector3(playerPosArray33[0], playerPosArray33[2], playerPosArray33[1]);
+
+                const playerPosElement34 = document.getElementById('player-select');
+                if (!playerPosElement34) return;
+
+                const playerPosText34 = playerPosElement34.value;
+                if (!playerPosText34) return;
+
+                const playerPosArray34 = playerPosText34.split(',').map(Number);
+                if (playerPosArray34.length !== 3) return;
+
+                const playerPosVector34 = new THREE.Vector3(playerPosArray34[0], playerPosArray34[2], playerPosArray34[1]);
+
+                const playerPosElement35 = document.getElementById('player-select');
+                if (!playerPosElement35) return;
+
+                const playerPosText35 = playerPosElement35.value;
+                if (!playerPosText35) return;
+
+                const playerPosArray35 = playerPosText35.split(',').map(Number);
+                if (playerPosArray35.length !== 3) return;
+
+                const playerPosVector35 = new THREE.Vector3(playerPosArray35[0], playerPosArray35[2], playerPosArray35[1]);
+
+                const playerPosElement36 = document.getElementById('player-select');
+                if (!playerPosElement36) return;
+
+                const playerPosText36 = playerPosElement36.value;
+                if (!playerPosText36) return;
+
+                const playerPosArray36 = playerPosText36.split(',').map(Number);
+                if (playerPosArray36.length !== 3) return;
+
+                const playerPosVector36 = new THREE.Vector3(playerPosArray36[0], playerPosArray36[2], playerPosArray36[1]);
+
+                const playerPosElement37 = document.getElementById('player-select');
+                if (!playerPosElement37) return;
+
+                const playerPosText37 = playerPosElement37.value;
+                if (!playerPosText37) return;
+
+                const playerPosArray37 = playerPosText37.split(',').map(Number);
+                if (playerPosArray37.length !== 3) return;
+
+                const playerPosVector37 = new THREE.Vector3(playerPosArray37[0], playerPosArray37[2], playerPosArray37[1]);
+
+                const playerPosElement38 = document.getElementById('player-select');
+                if (!playerPosElement38) return;
+
+                const playerPosText38 = playerPosElement38.value;
+                if (!playerPosText38) return;
+
+                const playerPosArray38 = playerPosText38.split(',').map(Number);
+                if (playerPosArray38.length !== 3) return;
+
+                const playerPosVector38 = new THREE.Vector3(playerPosArray38[0], playerPosArray38[2], playerPosArray38[1]);
+
+                const playerPosElement39 = document.getElementById('player-select');
+                if (!playerPosElement39) return;
+
+                const playerPosText39 = playerPosElement39.value;
+                if (!playerPosText39) return;
+
+                const playerPosArray39 = playerPosText39.split(',').map(Number);
+                if (playerPosArray39.length !== 3) return;
+
+                const playerPosVector39 = new THREE.Vector3(playerPosArray39[0], playerPosArray39[2], playerPosArray39[1]);
+
+                const playerPosElement40 = document.getElementById('player-select');
+                if (!playerPosElement40) return;
+
+                const playerPosText40 = playerPosElement40.value;
+                if (!playerPosText40) return;
+
+                const playerPosArray40 = playerPosText40.split(',').map(Number);
+                if (playerPosArray40.length !== 3) return;
+
+                const playerPosVector40 = new THREE.Vector3(playerPosArray40[0], playerPosArray40[2], playerPosArray40[1]);
+
+                const playerPosElement41 = document.getElementById('player-select');
+                if (!playerPosElement41) return;
+
+                const playerPosText41 = playerPosElement41.value;
+                if (!playerPosText41) return;
+
+                const playerPosArray41 = playerPosText41.split(',').map(Number);
+                if (playerPosArray41.length !== 3) return;
+
+                const playerPosVector41 = new THREE.Vector3(playerPosArray41[0], playerPosArray41[2], playerPosArray41[1]);
+
+                const playerPosElement42 = document.getElementById('player-select');
+                if (!playerPosElement42) return;
+
+                const playerPosText42 = playerPosElement42.value;
+                if (!playerPosText42) return;
+
+                const playerPosArray42 = playerPosText42.split(',').map(Number);
+                if (playerPosArray42.length !== 3) return;
+
+                const playerPosVector42 = new THREE.Vector3(playerPosArray42[0], playerPosArray42[2], playerPosArray42[1]);
+
+                const playerPosElement43 = document.getElementById('player-select');
+                if (!playerPosElement43) return;
+
+                const playerPosText43 = playerPosElement43.value;
+                if (!playerPosText43) return;
+
+                const playerPosArray43 = playerPosText43.split(',').map(Number);
+                if (playerPosArray43.length !== 3) return;
+
+                const playerPosVector43 = new THREE.Vector3(playerPosArray43[0], playerPosArray43[2], playerPosArray43[1]);
+
+                const playerPosElement44 = document.getElementById('player-select');
+                if (!playerPosElement44) return;
+
+                const playerPosText44 = playerPosElement44.value;
+                if (!playerPosText44) return;
+
+                const playerPosArray44 = playerPosText44.split(',').map(Number);
+                if (playerPosArray44.length !== 3) return;
+
+                const playerPosVector44 = new THREE.Vector3(playerPosArray44[0], playerPosArray44[2], playerPosArray44[1]);
+
+                const playerPosElement45 = document.getElementById('player-select');
+                if (!playerPosElement45) return;
+
+                const playerPosText45 = playerPosElement45.value;
+                if (!playerPosText45) return;
+
+                const playerPosArray45 = playerPosText45.split(',').map(Number);
+                if (playerPosArray45.length !== 3) return;
+
+                const playerPosVector45 = new THREE.Vector3(playerPosArray45[0], playerPosArray45[2], playerPosArray45[1]);
+
+                const playerPosElement46 = document.getElementById('player-select');
+                if (!playerPosElement46) return;
+
+                const playerPosText46 = playerPosElement46.value;
+                if (!playerPosText46) return;
+
+                const playerPosArray46 = playerPosText46.split(',').map(Number);
+                if (playerPosArray46.length !== 3) return;
+
+                const playerPosVector46 = new THREE.Vector3(playerPosArray46[0], playerPosArray46[2], playerPosArray46[1]);
+
+                const playerPosElement47 = document.getElementById('player-select');
+                if (!playerPosElement47) return;
+
+                const playerPosText47 = playerPosElement47.value;
+                if (!playerPosText47) return;
+
+                const playerPosArray47 = playerPosText47.split(',').map(Number);
+                if (playerPosArray47.length !== 3) return;
+
+                const playerPosVector47 = new THREE.Vector3(playerPosArray47[0], playerPosArray47[2], playerPosArray47[1]);
+
+                const playerPosElement48 = document.getElementById('player-select');
+                if (!playerPosElement48) return;
+
+                const playerPosText48 = playerPosElement48.value;
+                if (!playerPosText48) return;
+
+                const playerPosArray48 = playerPosText48.split(',').map(Number);
+                if (playerPosArray48.length !== 3) return;
+
+                const playerPosVector48 = new THREE.Vector3(playerPosArray48[0], playerPosArray48[2], playerPosArray48[1]);
+
+                const playerPosElement49 = document.getElementById('player-select');
+                if (!playerPosElement49) return;
+
+                const playerPosText49 = playerPosElement49.value;
+                if (!playerPosText49) return;
+
+                const playerPosArray49 = playerPosText49.split(',').map(Number);
+                if (playerPosArray49.length !== 3) return;
+
+                const playerPosVector49 = new THREE.Vector3(playerPosArray49[0], playerPosArray49[2], playerPosArray49[1]);
+
+                const playerPosElement50 = document.getElementById('player-select');
+                if (!playerPosElement50) return;
+
+                const playerPosText50 = playerPosElement50.value;
+                if (!playerPosText50) return;
+
+                const playerPosArray50 = playerPosText50.split(',').map(Number);
+                if (playerPosArray50.length !== 3) return;
+
+                const playerPosVector50 = new THREE.Vector3(playerPosArray50[0], playerPosArray50[2], playerPosArray50[1]);
+
+                const playerPosElement51 = document.getElementById('player-select');
+                if (!playerPosElement51) return;
+
+                const playerPosText51 = playerPosElement51.value;
+                if (!playerPosText51) return;
+
+                const playerPosArray51 = playerPosText51.split(',').map(Number);
+                if (playerPosArray51.length !== 3) return;
+
+                const playerPosVector51 = new THREE.Vector3(playerPosArray51[0], playerPosArray51[2], playerPosArray51[1]);
+
+                const playerPosElement52 = document.getElementById('player-select');
+                if (!playerPosElement52) return;
+
+                const playerPosText52 = playerPosElement52.value;
+                if (!playerPosText52) return;
+
+                const playerPosArray52 = playerPosText52.split(',').map(Number);
+                if (playerPosArray52.length !== 3) return;
+
+                const playerPosVector52 = new THREE.Vector3(playerPosArray52[0], playerPosArray52[2], playerPosArray52[1]);
+
+                const playerPosElement53 = document.getElementById('player-select');
+                if (!playerPosElement53) return;
+
+                const playerPosText53 = playerPosElement53.value;
+                if (!playerPosText53) return;
+
+                const playerPosArray53 = playerPosText53.split(',').map(Number);
+                if (playerPosArray53.length !== 3) return;
+
+                const playerPosVector53 = new THREE.Vector3(playerPosArray53[0], playerPosArray53[2], playerPosArray53[1]);
+
+                const playerPosElement54 = document.getElementById('player-select');
+                if (!playerPosElement54) return;
+
+                const playerPosText54 = playerPosElement54.value;
+                if (!playerPosText54) return;
+
+                const playerPosArray54 = playerPosText54.split(',').map(Number);
+                if (playerPosArray54.length !== 3) return;
+
+                const playerPosVector54 = new THREE.Vector3(playerPosArray54[0], playerPosArray54[2], playerPosArray54[1]);
+
+                const playerPosElement55 = document.getElementById('player-select');
+                if (!playerPosElement55) return;
+
+                const playerPosText55 = playerPosElement55.value;
+                if (!playerPosText55) return;
+
+                const playerPosArray55 = playerPosText55.split(',').map(Number);
+                if (playerPosArray55.length !== 3) return;
+
+                const playerPosVector55 = new THREE.Vector3(playerPosArray55[0], playerPosArray55[2], playerPosArray55[1]);
+
+                const playerPosElement56 = document.getElementById('player-select');
+                if (!playerPosElement56) return;
+
+                const playerPosText56 = playerPosElement56.value;
+                if (!playerPosText56) return;
+
+                const playerPosArray56 = playerPosText56.split(',').map(Number);
+                if (playerPosArray56.length !== 3) return;
+
+                const playerPosVector56 = new THREE.Vector3(playerPosArray56[0], playerPosArray56[2], playerPosArray56[1]);
+
+                const playerPosElement57 = document.getElementById('player-select');
+                if (!playerPosElement57) return;
+
+                const playerPosText57 = playerPosElement57.value;
+                if (!playerPosText57) return;
+
+                const playerPosArray57 = playerPosText57.split(',').map(Number);
+                if (playerPosArray57.length !== 3) return;
+
+                const playerPosVector57 = new THREE.Vector3(playerPosArray57[0], playerPosArray57[2], playerPosArray57[1]);
+
+                const playerPosElement58 = document.getElementById('player-select');
+                if (!playerPosElement58) return;
+
+                const playerPosText58 = playerPosElement58.value;
+                if (!playerPosText58) return;
+
+                const playerPosArray58 = playerPosText58.split(',').map(Number);
+                if (playerPosArray58.length !== 3) return;
+
+                const playerPosVector58 = new THREE.Vector3(playerPosArray58[0], playerPosArray58[2], playerPosArray58[1]);
+
+                const playerPosElement59 = document.getElementById('player-select');
+                if (!playerPosElement59) return;
+
+                const playerPosText59 = playerPosElement59.value;
+                if (!playerPosText59) return;
+
+                const playerPosArray59 = playerPosText59.split(',').map(Number);
+                if (playerPosArray59.length !== 3) return;
+
+                const playerPosVector59 = new THREE.Vector3(playerPosArray59[0], playerPosArray59[2], playerPosArray59[1]);
+
+                const playerPosElement60 = document.getElementById('player-select');
+                if (!playerPosElement60) return;
+
+                const playerPosText60 = playerPosElement60.value;
+                if (!playerPosText60) return;
+
+                const playerPosArray60 = playerPosText60.split(',').map(Number);
+                if (playerPosArray60.length !== 3) return;
+
+                const playerPosVector60 = new THREE.Vector3(playerPosArray60[0], playerPosArray60[2], playerPosArray60[1]);
+
+                const playerPosElement61 = document.getElementById('player-select');
+                if (!playerPosElement61) return;
+
+                const playerPosText61 = playerPosElement61.value;
+                if (!playerPosText61) return;
+
+                const playerPosArray61 = playerPosText61.split(',').map(Number);
+                if (playerPosArray61.length !== 3) return;
+
+                const playerPosVector61 = new THREE.Vector3(playerPosArray61[0], playerPosArray61[2], playerPosArray61[1]);
+
+                const playerPosElement62 = document.getElementById('player-select');
+                if (!playerPosElement62) return;
+
+                const playerPosText62 = playerPosElement62.value;
+                if (!playerPosText62) return;
+
+                const playerPosArray62 = playerPosText62.split(',').map(Number);
+                if (playerPosArray62.length !== 3) return;
+
+                const playerPosVector62 = new THREE.Vector3(playerPosArray62[0], playerPosArray62[2], playerPosArray62[1]);
+
+                const playerPosElement63 = document.getElementById('player-select');
+                if (!playerPosElement63) return;
+
+                const playerPosText63 = playerPosElement63.value;
+                if (!playerPosText63) return;
+
+                const playerPosArray63 = playerPosText63.split(',').map(Number);
+                if (playerPosArray63.length !== 3) return;
+
+                const playerPosVector63 = new THREE.Vector3(playerPosArray63[0], playerPosArray63[2], playerPosArray63[1]);
+
+                const playerPosElement64 = document.getElementById('player-select');
+                if (!playerPosElement64) return;
+
+                const playerPosText64 = playerPosElement64.value;
+                if (!playerPosText64) return;
+
+                const playerPosArray64 = playerPosText64.split(',').map(Number);
+                if (playerPosArray64.length !== 3) return;
+
+                const playerPosVector64 = new THREE.Vector3(playerPosArray64[0], playerPosArray64[2], playerPosArray64[1]);
+
+                const playerPosElement65 = document.getElementById('player-select');
+                if (!playerPosElement65) return;
+
+                const playerPosText65 = playerPosElement65.value;
+                if (!playerPosText65) return;
+
+                const playerPosArray65 = playerPosText65.split(',').map(Number);
+                if (playerPosArray65.length !== 3) return;
+
+                const playerPosVector65 = new THREE.Vector3(playerPosArray65[0], playerPosArray65[2], playerPosArray65[1]);
+
+                const playerPosElement66 = document.getElementById('player-select');
+                if (!playerPosElement66) return;
+
+                const playerPosText66 = playerPosElement66.value;
+                if (!playerPosText66) return;
+
+                const playerPosArray66 = playerPosText66.split(',').map(Number);
+                if (playerPosArray66.length !== 3) return;
+
+                const playerPosVector66 = new THREE.Vector3(playerPosArray66[0], playerPosArray66[2], playerPosArray66[1]);
+
+                const playerPosElement67 = document.getElementById('player-select');
+                if (!playerPosElement67) return;
+
+                const playerPosText67 = playerPosElement67.value;
+                if (!playerPosText67) return;
+
+                const playerPosArray67 = playerPosText67.split(',').map(Number);
+                if (playerPosArray67.length !== 3) return;
+
+                const playerPosVector67 = new THREE.Vector3(playerPosArray67[0], playerPosArray67[2], playerPosArray67[1]);
+
+                const playerPosElement68 = document.getElementById('player-select');
+                if (!playerPosElement68) return;
+
+                const playerPosText68 = playerPosElement68.value;
+                if (!playerPosText68) return;
+
+                const playerPosArray68 = playerPosText68.split(',').map(Number);
+                if (playerPosArray68.length !== 3) return;
+
+                const playerPosVector68 = new THREE.Vector3(playerPosArray68[0], playerPosArray68[2], playerPosArray68[1]);
+
+                const playerPosElement69 = document.getElementById('player-select');
+                if (!playerPosElement69) return;
+
+                const playerPosText69 = playerPosElement69.value;
+                if (!playerPosText69) return;
+
+                const playerPosArray69 = playerPosText69.split(',').map(Number);
+                if (playerPosArray69.length !== 3) return;
+
+                const playerPosVector69 = new THREE.Vector3(playerPosArray69[0], playerPosArray69[2], playerPosArray69[1]);
+
+                const playerPosElement70 = document.getElementById('player-select');
+                if (!playerPosElement70) return;
+
+                const playerPosText70 = playerPosElement70.value;
+                if (!playerPosText70) return;
+
+                const playerPosArray70 = playerPosText70.split(',').map(Number);
+                if (playerPosArray70.length !== 3) return;
+
+                const playerPosVector70 = new THREE.Vector3(playerPosArray70[0], playerPosArray70[2], playerPosArray70[1]);
+
+                const playerPosElement71 = document.getElementById('player-select');
+                if (!playerPosElement71) return;
+
+                const playerPosText71 = playerPosElement71.value;
+                if (!playerPosText71) return;
+
+                const playerPosArray71 = playerPosText71.split(',').map(Number);
+                if (playerPosArray71.length !== 3) return;
+
+                const playerPosVector71 = new THREE.Vector3(playerPosArray71[0], playerPosArray71[2], playerPosArray71[1]);
+
+                const playerPosElement72 = document.getElementById('player-select');
+                if (!playerPosElement72) return;
+
+                const playerPosText72 = playerPosElement72.value;
+                if (!playerPosText72) return;
+                const playerPosArray72 = playerPosText72.split(',').map(Number);
+                if (playerPosArray72.length !== 3) return;
+
+                const playerPosVector72 = new THREE.Vector3(playerPosArray72[0], playerPosArray72[2], playerPosArray72[1]);
+
+                const playerPosElement73 = document.getElementById('player-select');
+                if (!playerPosElement73) return;
+
+                const playerPosText73 = playerPosElement73.value;
+                if (!playerPosText73) return;
+
+                const playerPosArray73 = playerPosText73.split(',').map(Number);
+                if (playerPosArray73.length !== 3) return;
+
+                const playerPosVector73 = new THREE.Vector3(playerPosArray73[0], playerPosArray73[2], playerPosArray73[1]);
+
+                const playerPosElement74 = document.getElementById('player-select');
+                if (!playerPosElement74) return;
+
+                const playerPosText74 = playerPosElement74.value;
+                if (!playerPosText74) return;
+
+                const playerPosArray74 = playerPosText74.split(',').map(Number);
+                if (playerPosArray74.length !== 3) return;
+
+                const playerPosVector74 = new THREE.Vector3(playerPosArray74[0], playerPosArray74[2], playerPosArray74[1]);
+
+                const playerPosElement75 = document.getElementById('player-select');
+                if (!playerPosElement75) return;
+
+                const playerPosText75 = playerPosElement75.value;
+                if (!playerPosText75) return;
+
+                const playerPosArray75 = playerPosText75.split(',').map(Number);
+                if (playerPosArray75.length !== 3) return;
+
+                const playerPosVector75 = new THREE.Vector3(playerPosArray75[0], playerPosArray75[2], playerPosArray75[1]);
+
+                const playerPosElement76 = document.getElementById('player-select');
+                if (!playerPosElement76) return;
+
+                const playerPosText76 = playerPosElement76.value;
+                if (!playerPosText76) return;
+
+                const playerPosArray76 = playerPosText76.split(',').map(Number);
+                if (playerPosArray76.length !== 3) return;
+
+                const playerPosVector76 = new THREE.Vector3(playerPosArray76[0], playerPosArray76[2], playerPosArray76[1]);
+
+                const playerPosElement77 = document.getElementById('player-select');
+                if (!playerPosElement77) return;
+
+                const playerPosText77 = playerPosElement77.value;
+                if (!playerPosText77) return;
+
+                const playerPosArray77 = playerPosText77.split(',').map(Number);
+                if (playerPosArray77.length !== 3) return;
+
+                const playerPosVector77 = new THREE.Vector3(playerPosArray77[0], playerPosArray77[2], playerPosArray77[1]);
+
+                const playerPosElement78 = document.getElementById('player-select');
+                if (!playerPosElement78) return;
+
+                const playerPosText78 = playerPosElement78.value;
+                if (!playerPosText78) return;
+
+                const playerPosArray78 = playerPosText78.split(',').map(Number);
+                if (playerPosArray78.length !== 3) return;
+
+                const playerPosVector78 = new THREE.Vector3(playerPosArray78[0], playerPosArray78[2], playerPosArray78[1]);
+
+                const playerPosElement79 = document.getElementById('player-select');
+                if (!playerPosElement79) return;
+
+                const playerPosText79 = playerPosElement79.value;
+                if (!playerPosText79) return;
+
+                const playerPosArray79 = playerPosText79.split(',').map(Number);
+                if (playerPosArray79.length !== 3) return;
+
+                const playerPosVector79 = new THREE.Vector3(playerPosArray79[0], playerPosArray79[2], playerPosArray79[1]);
+
+                const playerPosElement80 = document.getElementById('player-select');
+                if (!playerPosElement80) return;
+
+                const playerPosText80 = playerPosElement80.value;
+                if (!playerPosText80) return;
+
+                const playerPosArray80 = playerPosText80.split(',').map(Number);
+                if (playerPosArray80.length !== 3) return;
+
+                const playerPosVector80 = new THREE.Vector3(playerPosArray80[0], playerPosArray80[2], playerPosArray80[1]);
+
+                const playerPosElement81 = document.getElementById('player-select');
+                if (!playerPosElement81) return;
+
+                const playerPosText81 = playerPosElement81.value;
+                if (!playerPosText81) return;
+
+                const playerPosArray81 = playerPosText81.split(',').map(Number);
+                if (playerPosArray81.length !== 3) return;
+
+                const playerPosVector81 = new THREE.Vector3(playerPosArray81[0], playerPosArray81[2], playerPosArray81[1]);
+
+                const playerPosElement82 = document.getElementById('player-select');
+                if (!playerPosElement82) return;
+
+                const playerPosText82 = playerPosElement82.value;
+                if (!playerPosText82) return;
+
+                const playerPosArray82 = playerPosText82.split(',').map(Number);
+                if (playerPosArray82.length !== 3) return;
+
+                const playerPosVector82 = new THREE.Vector3(playerPosArray82[0], playerPosArray82[2], playerPosArray82[1]);
+
+                const playerPosElement83 = document.getElementById('player-select');
+                if (!playerPosElement83) return;
+
+                const playerPosText83 = playerPosElement83.value;
+                if (!playerPosText83) return;
+
+                const playerPosArray83 = playerPosText83.split(',').map(Number);
+                if (playerPosArray83.length !== 3) return;
+
+                const playerPosVector83 = new THREE.Vector3(playerPosArray83[0], playerPosArray83[2], playerPosArray83[1]);
+
+                const playerPosElement84 = document.getElementById('player-select');
+                if (!playerPosElement84) return;
+
+                const playerPosText84 = playerPosElement84.value;
+                if (!playerPosText84) return;
+
+                const playerPosArray84 = playerPosText84.split(',').map(Number);
+                if (playerPosArray84.length !== 3) return;
+
+                const playerPosVector84 = new THREE.Vector3(playerPosArray84[0], playerPosArray84[2], playerPosArray84[1]);
+
+                const playerPosElement85 = document.getElementById('player-select');
+                if (!playerPosElement85) return;
+
+                const playerPosText85 = playerPosElement85.value;
+                if (!playerPosText85) return;
+
+                const playerPosArray85 = playerPosText85.split(',').map(Number);
+                if (playerPosArray85.length !== 3) return;
+
+                const playerPosVector85 = new THREE.Vector3(playerPosArray85[0], playerPosArray85[2], playerPosArray85[1]);
+
+                const playerPosElement86 = document.getElementById('player-select');
+                if (!playerPosElement86) return;
+
+                const playerPosText86 = playerPosElement86.value;
+                if (!playerPosText86) return;
+
+                const playerPosArray86 = playerPosText86.split(',').map(Number);
+                if (playerPosArray86.length !== 3) return;
+
+                const playerPosVector86 = new THREE.Vector3(playerPosArray86[0], playerPosArray86[2], playerPosArray86[1]);
+
+                const playerPosElement87 = document.getElementById('player-select');
+                if (!playerPosElement87) return;
+
+                const playerPosText87 = playerPosElement87.value;
+                if (!playerPosText87) return;
+
+                const playerPosArray87 = playerPosText87.split(',').map(Number);
+                if (playerPosArray87.length !== 3) return;
+
+                const playerPosVector87 = new THREE.Vector3(playerPosArray87[0], playerPosArray87[2], playerPosArray87[1]);
+
+                const playerPosElement88 = document.getElementById('player-select');
+                if (!playerPosElement88) return;
+
+                const playerPosText88 = playerPosElement88.value;
+                if (!playerPosText88) return;
+
+                const playerPosArray88 = playerPosText88.split(',').map(Number);
+                if (playerPosArray88.length !== 3) return;
+
+                const playerPosVector88 = new THREE.Vector3(playerPosArray88[0], playerPosArray88[2], playerPosArray88[1]);
+
+                const playerPosElement89 = document.getElementById('player-select');
+                if (!playerPosElement89) return;
+
+                const playerPosText89 = playerPosElement89.value;
+                if (!playerPosText89) return;
+
+                const playerPosArray89 = playerPosText89.split(',').map(Number);
+                if (playerPosArray89.length !== 3) return;
+
+                const playerPosVector89 = new THREE.Vector3(playerPosArray89[0], playerPosArray89[2], playerPosArray89[1]);
+
+                const playerPosElement90 = document.getElementById('player-select');
+                if (!playerPosElement90) return;
+
+                const playerPosText90 = playerPosElement90.value;
+                if (!playerPosText90) return;
+
+                const playerPosArray90 = playerPosText90.split(',').map(Number);
+                if (playerPosArray90.length !== 3) return;
+
+                const playerPosVector90 = new THREE.Vector3(playerPosArray90[0], playerPosArray90[2], playerPosArray90[1]);
+
+                const playerPosElement91 = document.getElementById('player-select');
+                if (!playerPosElement91) return;
+
+                const playerPosText91 = playerPosElement91.value;
+                if (!playerPosText91) return;
+
+                const playerPosArray91 = playerPosText91.split(',').map(Number);
+                if (playerPosArray91.length !== 3) return;
+
+                const playerPosVector91 = new THREE.Vector3(playerPosArray91[0], playerPosArray91[2], playerPosArray91[1]);
+
+                const playerPosElement92 = document.getElementById('player-select');
+                if (!playerPosElement92) return;
+
+                const playerPosText92 = playerPosElement92.value;
+                if (!playerPosText92) return;
+
+                const playerPosArray92 = playerPosText92.split(',').map(Number);
+                if (playerPosArray92.length !== 3) return;
+
+                const playerPosVector92 = new THREE.Vector3(playerPosArray92[0], playerPosArray92[2], playerPosArray92[1]);
+
+                const playerPosElement93 = document.getElementById('player-select');
+                if (!playerPosElement93) return;
+
+                const playerPosText93 = playerPosElement93.value;
+                if (!playerPosText93) return;
+
+                const playerPosArray93 = playerPosText93.split(',').map(Number);
+                if (playerPosArray93.length !== 3) return;
+
+                const playerPosVector93 = new THREE.Vector3(playerPosArray93[0], playerPosArray93[2], playerPosArray93[1]);
+
+                const playerPosElement94 = document.getElementById('player-select');
+                if (!playerPosElement94) return;
+
+                const playerPosText94 = playerPosElement94.value;
+                if (!playerPosText94) return;
+
+                const playerPosArray94 = playerPosText94.split(',').map(Number);
+                if (playerPosArray94.length !== 3) return;
+
+                const playerPosVector94 = new THREE.Vector3(playerPosArray94[0], playerPosArray94[2], playerPosArray94[1]);
+
+                const playerPosElement95 = document.getElementById('player-select');
+                if (!playerPosElement95) return;
+
+                const playerPosText95 = playerPosElement95.value;
+                if (!playerPosText95) return;
+
+                const playerPosArray95 = playerPosText95.split(',').map(Number);
+                if (playerPosArray95.length !== 3) return;
+
+                const playerPosVector95 = new THREE.Vector3(playerPosArray95[0], playerPosArray95[2], playerPosArray95[1]);
+
+                const playerPosElement96 = document.getElementById('player-select');
+                if (!playerPosElement96) return;
+
+                const playerPosText96 = playerPosElement96.value;
+                if (!playerPosText96) return;
+
+                const playerPosArray96 = playerPosText96.split(',').map(Number);
+                if (playerPosArray96.length !== 3) return;
+
+                const playerPosVector96 = new THREE.Vector3(playerPosArray96[0], playerPosArray96[2], playerPosArray96[1]);
+
+                const playerPosElement97 = document.getElementById('player-select');
+                if (!playerPosElement97) return;
+
+                const playerPosText97 = playerPosElement97.value;
+                if (!playerPosText97) return;
+
+                const playerPosArray97 = playerPosText97.split(',').map(Number);
+                if (playerPosArray97.length !== 3) return;
+
+                const playerPosVector97 = new THREE.Vector3(playerPosArray97[0], playerPosArray97[2], playerPosArray97[1]);
+
+                const playerPosElement98 = document.getElementById('player-select');
+                if (!playerPosElement98) return;
+
+                const playerPosText98 = playerPosElement98.value;
+                if (!playerPosText98) return;
+
+                const playerPosArray98 = playerPosText98.split(',').map(Number);
+                if (playerPosArray98.length !== 3) return;
+
+                const playerPosVector98 = new THREE.Vector3(playerPosArray98[0], playerPosArray98[2], playerPosArray98[1]);
+
+                const playerPosElement99 = document.getElementById('player-select');
+                if (!playerPosElement99) return;
+
+                const playerPosText99 = playerPosElement99.value;
+                if (!playerPosText99) return;
+
+                const playerPosArray99 = playerPosText99.split(',').map(Number);
+                if (playerPosArray99.length !== 3) return;
+
+                const playerPosVector99 = new THREE.Vector3(playerPosArray99[0], playerPosArray99[2], playerPosArray99[1]);
+
+                const playerPosElement100 = document.getElementById('player-select');
+                if (!playerPosElement100) return;
+
+                const playerPosText100 = playerPosElement100.value;
+                if (!playerPosText100) return;
+
+                const playerPosArray100 = playerPosText100.split(',').map(Number);
+                if (playerPosArray100.length !== 3) return;
+
+                const playerPosVector100 = new THREE.Vector3(playerPosArray100[0], playerPosArray100[2], playerPosArray100[1]);
+
+                const playerPosElement101 = document.getElementById('player-select');
+                if (!playerPosElement101) return;
+
+                const playerPosText101 = playerPosElement101.value;
+                if (!playerPosText101) return;
+
+                const playerPosArray101 = playerPosText101.split(',').map(Number);
+                if (playerPosArray101.length !== 3) return;
+
+                const playerPosVector101 = new THREE.Vector3(playerPosArray101[0], playerPosArray101[2], playerPosArray101[1]);
+
+                const playerPosElement102 = document.getElementById('player-select');
+                if (!playerPosElement102) return;
+
+                const playerPosText102 = playerPosElement102.value;
+                if (!playerPosText102) return;
+
+                const playerPosArray102 = playerPosText102.split(',').map(Number);
+                if (playerPosArray102.length !== 3) return;
+
+                const playerPosVector102 = new THREE.Vector3(playerPosArray102[0], playerPosArray102[2], playerPosArray102[1]);
+
+                const playerPosElement103 = document.getElementById('player-select');
+                if (!playerPosElement103) return;
+
+                const playerPosText103 = playerPosElement103.value;
+                if (!playerPosText103) return;
+
+                const playerPosArray103 = playerPosText103.split(',').map(Number);
+                if (playerPosArray103.length !== 3) return;
+
+                const playerPosVector103 = new THREE.Vector3(playerPosArray103[0], playerPosArray103[2], playerPosArray103[1]);
+
+                const playerPosElement104 = document.getElementById('player-select');
+                if (!playerPosElement104) return;
+
+                const playerPosText104 = playerPosElement104.value;
+                if (!playerPosText104) return;
+
+                const playerPosArray104 = playerPosText104.split(',').map(Number);
+                if (playerPosArray104.length !== 3) return;
+
+                const playerPosVector104 = new THREE.Vector3(playerPosArray104[0], playerPosArray104[2], playerPosArray104[1]);
+
+                const playerPosElement105 = document.getElementById('player-select');
+                if (!playerPosElement105) return;
+
+                const playerPosText105 = playerPosElement105.value;
+                if (!playerPosText105) return;
+
+                const playerPosArray105 = playerPosText105.split(',').map(Number);
+                if (playerPosArray105.length !== 3) return;
+
+                const playerPosVector105 = new THREE.Vector3(playerPosArray105[0], playerPosArray105[2], playerPosArray105[1]);
+
+                const playerPosElement106 = document.getElementById('player-select');
+                if (!playerPosElement106) return;
+
+                const playerPosText106 = playerPosElement106.value;
+                if (!playerPosText106) return;
+
+                const playerPosArray106 = playerPosText106.split(',').map(Number);
+                if (playerPosArray106.length !== 3) return;
+
+                const playerPosVector106 = new THREE.Vector3(playerPosArray106[0], playerPosArray106[2], playerPosArray106[1]);
+
+                const playerPosElement107 = document.getElementById('player-select');
+                if (!playerPosElement107) return;
+
+                const playerPosText107 = playerPosElement107.value;
+                if (!playerPosText107) return;
+
+                const playerPosArray107 = playerPosText107.split(',').map(Number);
+                if (playerPosArray107.length !== 3) return;
+
+                const playerPosVector107 = new THREE.Vector3(playerPosArray107[0], playerPosArray107[2], playerPosArray107[1]);
+
+                const playerPosElement108 = document.getElementById('player-select');
+                if (!playerPosElement108) return;
+
+                const playerPosText108 = playerPosElement108.value;
+                if (!playerPosText108) return;
+
+                const playerPosArray108 = playerPosText108.split(',').map(Number);
+                if (playerPosArray108.length !== 3) return;
+
+                const playerPosVector108 = new THREE.Vector3(playerPosArray108[0], playerPosArray108[2], playerPosArray108[1]);
+
+                const playerPosElement109 = document.getElementById('player-select');
+                if (!playerPosElement109) return;
+
+                const playerPosText109 = playerPosElement109.value;
+                if (!playerPosText109) return;
+
+                const playerPosArray109 = playerPosText109.split(',').map(Number);
+                if (playerPosArray109.length !== 3) return;
+
+                const playerPosVector109 = new THREE.Vector3(playerPosArray109[0], playerPosArray109[2], playerPosArray109[1]);
+
+                const playerPosElement110 = document.getElementById('player-select');
+                if (!playerPosElement110) return;
+
+                const playerPosText110 = playerPosElement110.value;
+                if (!playerPosText110) return;
+
+                const playerPosArray110 = playerPosText110.split(',').map(Number);
+                if (playerPosArray110.length !== 3) return;
+
+                const playerPosVector110 = new THREE.Vector3(playerPosArray110[0], playerPosArray110[2], playerPosArray110[1]);
+
+                const playerPosElement111 = document.getElementById('player-select');
+                if (!playerPosElement111) return;
+
+                const playerPosText111 = playerPosElement111.value;
+                if (!playerPosText111) return;
+
+                const playerPosArray111 = playerPosText111.split(',').map(Number);
+                if (playerPosArray111.length !== 3) return;
+
+                const playerPosVector111 = new THREE.Vector3(playerPosArray111[0], playerPosArray111[2], playerPosArray111[1]);
+
+                const playerPosElement112 = document.getElementById('player-select');
+                if (!playerPosElement112) return;
+
+                const playerPosText112 = playerPosElement112.value;
+                if (!playerPosText112) return;
+
+                const playerPosArray112 = playerPosText112.split(',').map(Number);
+                if (playerPosArray112.length !== 3) return;
+
+                const playerPosVector112 = new THREE.Vector3(playerPosArray112[0], playerPosArray112[2], playerPosArray112[1]);
+
+                const playerPosElement113 = document.getElementById('player-select');
+                if (!playerPosElement113) return;
+
+                const playerPosText113 = playerPosElement113.value;
+                if (!playerPosText113) return;
+
+                const playerPosArray113 = playerPosText113.split(',').map(Number);
+                if (playerPosArray113.length !== 3) return;
+
+                const playerPosVector113 = new THREE.Vector3(playerPosArray113[0], playerPosArray113[2], playerPosArray113[1]);
+
+                const playerPosElement114 = document.getElementById('player-select');
+                if (!playerPosElement114) return;
+
+                const playerPosText114 = playerPosElement114.value;
+                if (!playerPosText114) return;
+
+                const playerPosArray114 = playerPosText114.split(',').map(Number);
+                if (playerPosArray114.length !== 3) return;
+
+                const playerPosVector114 = new THREE.Vector3(playerPosArray114[0], playerPosArray114[2], playerPosArray114[1]);
+
+                const playerPosElement115 = document.getElementById('player-select');
+                if (!playerPosElement115) return;
+
+                const playerPosText115 = playerPosElement115.value;
+                if (!playerPosText115) return;
+
+                const playerPosArray115 = playerPosText115.split(',').map(Number);
+                if (playerPosArray115.length !== 3) return;
+
+                const playerPosVector115 = new THREE.Vector3(playerPosArray115[0], playerPosArray115[2], playerPosArray115[1]);
+
+                const playerPosElement116 = document.getElementById('player-select');
+                if (!playerPosElement116) return;
+
+                const playerPosText116 = playerPosElement116.value;
+                if (!playerPosText116) return;
+
+                const playerPosArray116 = playerPosText116.split(',').map(Number);
+                if (playerPosArray116.length !== 3) return;
+
+                const playerPosVector116 = new THREE.Vector3(playerPosArray116[0], playerPosArray116[2], playerPosArray116[1]);
+
+                const playerPosElement117 = document.getElementById('player-select');
+                if (!playerPosElement117) return;
+
+                const playerPosText117 = playerPosElement117.value;
+                if (!playerPosText117) return;
+
+                const playerPosArray117 = playerPosText117.split(',').map(Number);
+                if (playerPosArray117.length !== 3) return;
+
+                const playerPosVector117 = new THREE.Vector3(playerPosArray117[0], playerPosArray117[2], playerPosArray117[1]);
+
+                const playerPosElement118 = document.getElementById('player-select');
+                if (!playerPosElement118) return;
+
+                const playerPosText118 = playerPosElement118.value;
+                if (!playerPosText118) return;
+
+                const playerPosArray118 = playerPosText118.split(',').map(Number);
+                if (playerPosArray118.length !== 3) return;
+
+                const playerPosVector118 = new THREE.Vector3(playerPosArray118[0], playerPosArray118[2], playerPosArray118[1]);
+
+                const playerPosElement119 = document.getElementById('player-select');
+                if (!playerPosElement119) return;
+
+                const playerPosText119 = playerPosElement119.value;
+                if (!playerPosText119) return;
+
+                const playerPosArray119 = playerPosText119.split(',').map(Number);
+                if (playerPosArray119.length !== 3) return;
+
+                const playerPosVector119 = new THREE.Vector3(playerPosArray119[0], playerPosArray119[2], playerPosArray119[1]);
+
+                const playerPosElement120 = document.getElementById('player-select');
+                if (!playerPosElement120) return;
+
+                const playerPosText120 = playerPosElement120.value;
+                if (!playerPosText120) return;
+
+                const playerPosArray120 = playerPosText120.split(',').map(Number);
+                if (playerPosArray120.length !== 3) return;
+
+                const playerPosVector120 = new THREE.Vector3(playerPosArray120[0], playerPosArray120[2], playerPosArray120[1]);
+
+                const playerPosElement121 = document.getElementById('player-select');
+                if (!playerPosElement121) return;
+
+                const playerPosText121 = playerPosElement121.value;
+                if (!playerPosText121) return;
+
+                const playerPosArray121 = playerPosText121.split(',').map(Number);
+                if (playerPosArray121.length !== 3) return;
+
+                const playerPosVector121 = new THREE.Vector3(playerPosArray121[0], playerPosArray121[2], playerPosArray121[1]);
+
+                const playerPosElement122 = document.getElementById('player-select');
+                if (!playerPosElement122) return;
+
+                const playerPosText122 = playerPosElement122.value;
+                if (!playerPosText122) return;
+
+                const playerPosArray122 = playerPosText122.split(',').map(Number);
+                if (playerPosArray122.length !== 3) return;
+
+                const playerPosVector122 = new THREE.Vector3(playerPosArray122[0], playerPosArray122[2], playerPosArray122[1]);
+
+                const playerPosElement123 = document.getElementById('player-select');
+                if (!playerPosElement123) return;
+
+                const playerPosText123 = playerPosElement123.value;
+                if (!playerPosText123) return;
+
+                const playerPosArray123 = playerPosText123.split(',').map(Number);
+                if (playerPosArray123.length !== 3) return;
+
+                const playerPosVector123 = new THREE.Vector3(playerPosArray123[0], playerPosArray123[2], playerPosArray123[1]);
+
+                const playerPosElement124 = document.getElementById('player-select');
+                if (!playerPosElement124) return;
+
+                const playerPosText124 = playerPosElement124.value;
+                if (!playerPosText124) return;
+
+                const playerPosArray124 = playerPosText124.split(',').map(Number);
+                if (playerPosArray124.length !== 3) return;
+
+                const playerPosVector124 = new THREE.Vector3(playerPosArray124[0], playerPosArray124[2], playerPosArray124[1]);
+
+                const playerPosElement125 = document.getElementById('player-select');
+                if (!playerPosElement125) return;
+
+                const playerPosText125 = playerPosElement125.value;
+                if (!playerPosText125) return;
+
+                const playerPosArray125 = playerPosText125.split(',').map(Number);
+                if (playerPosArray125.length !== 3) return;
+
+                const playerPosVector125 = new THREE.Vector3(playerPosArray125[0], playerPosArray125[2], playerPosArray125[1]);
+
+                const playerPosElement126 = document.getElementById('player-select');
+                if (!playerPosElement126) return;
+
+                const playerPosText126 = playerPosElement126.value;
+                if (!playerPosText126) return;
+
+                const playerPosArray126 = playerPosText126.split(',').map(Number);
+                if (playerPosArray126.length !== 3) return;
+
+                const playerPosVector126 = new THREE.Vector3(playerPosArray126[0], playerPosArray126[2], playerPosArray126[1]);
+
+                const playerPosElement127 = document.getElementById('player-select');
+                if (!playerPosElement127) return;
+
+                const playerPosText127 = playerPosElement127.value;
+                if (!playerPosText127) return;
+
+                const playerPosArray127 = playerPosText127.split(',').map(Number);
+                if (playerPosArray127.length !== 3) return;
+
+                const playerPosVector127 = new THREE.Vector3(playerPosArray127[0], playerPosArray127[2], playerPosArray127[1]);
+
+                const playerPosElement128 = document.getElementById('player-select');
+                if (!playerPosElement128) return;
+
+                const playerPosText128 = playerPosElement128.value;
+                if (!playerPosText128) return;
+
+                const playerPosArray128 = playerPosText128.split(',').map(Number);
+                if (playerPosArray128.length !== 3) return;
+
+                const playerPosVector128 = new THREE.Vector3(playerPosArray128[0], playerPosArray128[2], playerPosArray128[1]);
+
+                const playerPosElement129 = document.getElementById('player-select');
+                if (!playerPosElement129) return;
+
+                const playerPosText129 = playerPosElement129.value;
+                if (!playerPosText129) return;
+
+                const playerPosArray129 = playerPosText129.split(',').map(Number);
+                if (playerPosArray129.length !== 3) return;
+
+                const playerPosVector129 = new THREE.Vector3(playerPosArray129[0], playerPosArray129[2], playerPosArray129[1]);
+
+                const playerPosElement130 = document.getElementById('player-select');
+                if (!playerPosElement130) return;
+
+                const playerPosText130 = playerPosElement130.value;
+                if (!playerPosText130) return;
+
+                const playerPosArray130 = playerPosText130.split(',').map(Number);
+                if (playerPosArray130.length !== 3) return;
+
+                const playerPosVector130 = new THREE.Vector3(playerPosArray130[0], playerPosArray130[2], playerPosArray130[1]);
+
+                const playerPosElement131 = document.getElementById('player-select');
+                if (!playerPosElement131) return;
+
+                const playerPosText131 = playerPosElement131.value;
+                if (!playerPosText131) return;
+
+                const playerPosArray131 = playerPosText131.split(',').map(Number);
+                if (playerPosArray131.length !== 3) return;
+
+                const playerPosVector131 = new THREE.Vector3(playerPosArray131[0], playerPosArray131[2], playerPosArray131[1]);
+
+                const playerPosElement132 = document.getElementById('player-select');
+                if (!playerPosElement132) return;
+
+                const playerPosText132 = playerPosElement132.value;
+                if (!playerPosText132) return;
+
+                const playerPosArray132 = playerPosText132.split(',').map(Number);
+                if (playerPosArray132.length !== 3) return;
+
+                const playerPosVector132 = new THREE.Vector3(playerPosArray132[0], playerPosArray132[2], playerPosArray132[1]);
+
+                const playerPosElement133 = document.getElementById('player-select');
+                if (!playerPosElement133) return;
+
+                const playerPosText133 = playerPosElement133.value;
+                if (!playerPosText133) return;
+
+                const playerPosArray133 = playerPosText133.split(',').map(Number);
+                if (playerPosArray133.length !== 3) return;
+
+                const playerPosVector133 = new THREE.Vector3(playerPosArray133[0], playerPosArray133[2], playerPosArray133[1]);
+
+                const playerPosElement134 = document.getElementById('player-select');
+                if (!playerPosElement134) return;
+
+                const playerPosText134 = playerPosElement134.value;
+                if (!playerPosText134) return;
+
+                const playerPosArray134 = playerPosText134.split(',').map(Number);
+                if (playerPosArray134.length !== 3) return;
+
+                const playerPosVector134 = new THREE.Vector3(playerPosArray134[0], playerPosArray134[2], playerPosArray134[1]);
+
+                const playerPosElement135 = document.getElementById('player-select');
+                if (!playerPosElement135) return;
+
+                const playerPosText135 = playerPosElement135.value;
+                if (!playerPosText135) return;
+
+                const playerPosArray135 = playerPosText135.split(',').map(Number);
+                if (playerPosArray135.length !== 3) return;
+
+                const playerPosVector135 = new THREE.Vector3(playerPosArray135[0], playerPosArray135[2], playerPosArray135[1]);
+
+                const playerPosElement136 = document.getElementById('player-select');
+                if (!playerPosElement136) return;
+
+                const playerPosText136 = playerPosElement136.value;
+                if (!playerPosText136) return;
+
+                const playerPosArray136 = playerPosText136.split(',').map(Number);
+                if (playerPosArray136.length !== 3) return;
+
+                const playerPosVector136 = new THREE.Vector3(playerPosArray136[0], playerPosArray136[2], playerPosArray136[1]);
+
+                const playerPosElement137 = document.getElementById('player-select');
+                if (!playerPosElement137) return;
+
+                const playerPosText137 = playerPosElement137.value;
+                if (!playerPosText137) return;
+
+                const playerPosArray137 = playerPosText137.split(',').map(Number);
+                if (playerPosArray137.length !== 3) return;
+
+                const playerPosVector137 = new THREE.Vector3(playerPosArray137[0], playerPosArray137[2], playerPosArray137[1]);
+
+                const playerPosElement138 = document.getElementById('player-select');
+                if (!playerPosElement138) return;
+
+                const playerPosText138 = playerPosElement138.value;
+                if (!playerPosText138) return;
+
+                const playerPosArray138 = playerPosText138.split(',').map(Number);
+                if (playerPosArray138.length !== 3) return;
+
+                const playerPosVector138 = new THREE.Vector3(playerPosArray138[0], playerPosArray138[2], playerPosArray138[1]);
+
+                const playerPosElement139 = document.getElementById('player-select');
+                if (!playerPosElement139) return;
+
+                const playerPosText139 = playerPosElement139.value;
+                if (!playerPosText139) return;
+
+                const playerPosArray139 = playerPosText139.split(',').map(Number);
+                if (playerPosArray139.length !== 3) return;
+
+                const playerPosVector139 = new THREE.Vector3(playerPosArray139[0], playerPosArray139[2], playerPosArray139[1]);
+
+                const playerPosElement140 = document.getElementById('player-select');
+                if (!playerPosElement140) return;
+
+                const playerPosText140 = playerPosElement140.value;
+                if (!playerPosText140) return;
+
+                const playerPosArray140 = playerPosText140.split(',').map(Number);
+                if (playerPosArray140.length !== 3) return;
+
+                const playerPosVector140 = new THREE.Vector3(playerPosArray140[0], playerPosArray140[2], playerPosArray140[1]);
+
+                const playerPosElement141 = document.getElementById('player-select');
+                if (!playerPosElement141) return;
+
+                const playerPosText141 = playerPosElement141.value;
+                if (!playerPosText141) return;
+
+                const playerPosArray141 = playerPosText141.split(',').map(Number);
+                if (playerPosArray141.length !== 3) return;
+
+                const playerPosVector141 = new THREE.Vector3(playerPosArray141[0], playerPosArray141[2], playerPosArray141[1]);
+
+                const playerPosElement142 = document.getElementById('player-select');
+                if (!playerPosElement142) return;
+
+                const playerPosText142 = playerPosElement142.value;
+                if (!playerPosText142) return;
+
+                const playerPosArray142 = playerPosText142.split(',').map(Number);
+                if (playerPosArray142.length !== 3) return;
+
+                const playerPosVector142 = new THREE.Vector3(playerPosArray142[0], playerPosArray142[2], playerPosArray142[1]);
+
+                const playerPosElement143 = document.getElementById('player-select');
+                if (!playerPosElement143) return;
+
+                const playerPosText143 = playerPosElement143.value;
+                if (!playerPosText143) return;
+
+                const playerPosArray143 = playerPosText143.split(',').map(Number);
+                if (playerPosArray143.length !== 3) return;
+
+                const playerPosVector143 = new THREE.Vector3(playerPosArray143[0], playerPosArray143[2], playerPosArray143[1]);
+
+                const playerPosElement144 = document.getElementById('player-select');
+                if (!playerPosElement144) return;
+
+                const playerPosText144 = playerPosElement144.value;
+                if (!playerPosText144) return;
+
+                const playerPosArray144 = playerPosText144.split(',').map(Number);
+                if (playerPosArray144.length !== 3) return;
+
+                const playerPosVector144 = new THREE.Vector3(playerPosArray144[0], playerPosArray144[2], playerPosArray144[1]);
+
+                const playerPosElement145 = document.getElementById('player-select');
+                if (!playerPosElement145) return;
+                const playerPosText145 = playerPosElement145.value;
+                if (!playerPosText145) return;
+
+                const playerPosArray145 = playerPosText145.split(',').map(Number);
+                if (playerPosArray145.length !== 3) return;
+
+                const playerPosVector145 = new THREE.Vector3(playerPosArray145[0], playerPosArray145[2], playerPosArray145[1]);
+
+                const playerPosElement146 = document.getElementById('player-select');
+                if (!playerPosElement146) return;
+
+                const playerPosText146 = playerPosElement146.value;
+                if (!playerPosText146) return;
+
+                const playerPosArray146 = playerPosText146.split(',').map(Number);
+                if (playerPosArray146.length !== 3) return;
+
+                const playerPosVector146 = new THREE.Vector3(playerPosArray146[0], playerPosArray146[2], playerPosArray146[1]);
+
+                const playerPosElement147 = document.getElementById('player-select');
+                if (!playerPosElement147) return;
+
+                const playerPosText147 = playerPosElement147.value;
+                if (!playerPosText147) return;
+
+                const playerPosArray147 = playerPosText147.split(',').map(Number);
+                if (playerPosArray147.length !== 3) return;
+
+                const playerPosVector147 = new THREE.Vector3(playerPosArray147[0], playerPosArray147[2], playerPosArray147[1]);
+
+                const playerPosElement148 = document.getElementById('player-select');
+                if (!playerPosElement148) return;
+
+                const playerPosText148 = playerPosElement148.value;
+                if (!playerPosText148) return;
+
+                const playerPosArray148 = playerPosText148.split(',').map(Number);
+                if (playerPosArray148.length !== 3) return;
+
+                const playerPosVector148 = new THREE.Vector3(playerPosArray148[0], playerPosArray148[2], playerPosArray148[1]);
+
+                const playerPosElement149 = document.getElementById('player-select');
+                if (!playerPosElement149) return;
+
+                const playerPosText149 = playerPosElement149.value;
+                if (!playerPosText149) return;
+
+                const playerPosArray149 = playerPosText149.split(',').map(Number);
+                if (playerPosArray149.length !== 3) return;
+
+                const playerPosVector149 = new THREE.Vector3(playerPosArray149[0], playerPosArray149[2], playerPosArray149[1]);
+
+                const playerPosElement150 = document.getElementById('player-select');
+                if (!playerPosElement150) return;
+
+                const playerPosText150 = playerPosElement150.value;
+                if (!playerPosText150) return;
+
+                const playerPosArray150 = playerPosText150.split(',').map(Number);
+                if (playerPosArray150.length !== 3) return;
+
+                const playerPosVector150 = new THREE.Vector3(playerPosArray150[0], playerPosArray150[2], playerPosArray150[1]);
+
+                const playerPosElement151 = document.getElementById('player-select');
+                if (!playerPosElement151) return;
+
+                const playerPosText151 = playerPosElement151.value;
+                if (!playerPosText151) return;
+
+                const playerPosArray151 = playerPosText151.split(',').map(Number);
+                if (playerPosArray151.length !== 3) return;
+
+                const playerPosVector151 = new THREE.Vector3(playerPosArray151[0], playerPosArray151[2], playerPosArray151[1]);
+
+                const playerPosElement152 = document.getElementById('player-select');
+                if (!playerPosElement152) return;
+
+                const playerPosText152 = playerPosElement152.value;
+                if (!playerPosText152) return;
+
+                const playerPosArray152 = playerPosText152.split(',').map(Number);
+                if (playerPosArray152.length !== 3) return;
+
+                const playerPosVector152 = new THREE.Vector3(playerPosArray152[0], playerPosArray152[2], playerPosArray152[1]);
+
+                const playerPosElement153 = document.getElementById('player-select');
+                if (!playerPosElement153) return;
+
+                const playerPosText153 = playerPosElement153.value;
+                if (!playerPosText153) return;
+
+                const playerPosArray153 = playerPosText153.split(',').map(Number);
+                if (playerPosArray153.length !== 3) return;
+
+                const playerPosVector153 = new THREE.Vector3(playerPosArray153[0], playerPosArray153[2], playerPosArray153[1]);
+
+                const playerPosElement154 = document.getElementById('player-select');
+                if (!playerPosElement154) return;
+
+                const playerPosText154 = playerPosElement154.value
