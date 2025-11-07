@@ -658,6 +658,7 @@
         <div class="nav-item active">Info</div>
         <div class="nav-item">3D 시뮬레이션 분석</div>
         <div class="nav-item" id="report-tab">분석 보고서</div>
+        <div class="nav-item" id="lang-toggle" style="margin-left: auto; cursor: pointer; padding: 8px 12px; background: #2a2f3e; border-radius: 4px;">🌐 EN</div>
     </div>
 
     <div id="container" style="display: none;">
@@ -895,6 +896,8 @@
                 this.focusTimeRange = null;
                 this.focusTickRange = null;
                 this.baseCameraDistance = 1500;
+                this.language = 'ko'; // 'ko' or 'en'
+                this.currentReportWindow = null; // 현재 열려있는 보고서 창
                 this.cameraRotationX = 0.3;
                 this.cameraRotationY = 0;
                 this.cameraDistance = 1500;
@@ -1324,7 +1327,24 @@ Three.js · PapaParse · 순수 JavaScript`;
                     if (playerName) {
                         this.generateReport(playerName);
                     } else {
-                        alert('먼저 플레이어를 선택해주세요');
+                        alert(this.language === 'ko' ? '먼저 플레이어를 선택해주세요' : 'Please select a player first');
+                    }
+                });
+                
+                // 언어 전환 버튼
+                document.getElementById('lang-toggle').addEventListener('click', () => {
+                    this.language = this.language === 'ko' ? 'en' : 'ko';
+                    const langToggle = document.getElementById('lang-toggle');
+                    langToggle.textContent = this.language === 'ko' ? '🌐 EN' : '🌐 KO';
+                    
+                    // 보고서가 열려있으면 언어 변경 후 재생성
+                    if (this.currentReportWindow && !this.currentReportWindow.closed) {
+                        const playerName = this.selectedPlayer || (this.selectedEvent && this.selectedEvent.attacker && this.selectedEvent.attacker.name) || 
+                                        ((this.data && this.data.metadata && this.data.metadata.players && this.data.metadata.players[0]) || null);
+                        if (playerName) {
+                            this.currentReportWindow.close();
+                            this.generateReport(playerName);
+                        }
                     }
                 });
             }
@@ -2475,13 +2495,81 @@ Three.js · PapaParse · 순수 JavaScript`;
                 // 보고서 생성 (이미지 로딩 대기)
                 generateCombinedImage().then(combinedAimTraceImage => {
                 
+                    // 언어별 텍스트 정의
+                    const texts = {
+                        ko: {
+                            title: '플레이어 보고서',
+                            generated: '생성 시간',
+                            userInfo: '유저 기본 정보',
+                            deviceType: '기기 사용 타입',
+                            kdRatio: 'K/D 비율',
+                            headshotRate: '헤드샷 비율',
+                            matchStats: '매치 통계',
+                            team: '팀',
+                            kills: '킬',
+                            deaths: '데스',
+                            totalKills: '총 킬 수',
+                            killTraces: '킬 궤적',
+                            killEvents: '킬 이벤트',
+                            time: '시간',
+                            event: '이벤트',
+                            victim: '피해자',
+                            weapon: '무기',
+                            headshot: '헤드샷',
+                            kill: '킬',
+                            death: '데스',
+                            yes: '예',
+                            no: '아니오',
+                            aimAnalysis: '에임 이동 분석 - 킬 이벤트',
+                            totalKillsCount: '총 킬 수',
+                            tracesGenerated: '생성된 킬 궤적',
+                            individualTraces: '개별 킬 에임 궤적 (각 킬 주변 ±30 틱)',
+                            killNum: '킬 #',
+                            noKillEvents: '에임 데이터가 있는 킬 이벤트가 없습니다',
+                            download: '다운로드'
+                        },
+                        en: {
+                            title: 'Player Report',
+                            generated: 'Generated',
+                            userInfo: 'User Basic Information',
+                            deviceType: 'Device Type',
+                            kdRatio: 'K/D Ratio',
+                            headshotRate: 'Headshot Rate',
+                            matchStats: 'Match Statistics',
+                            team: 'Team',
+                            kills: 'Kills',
+                            deaths: 'Deaths',
+                            totalKills: 'Total Kills',
+                            killTraces: 'Kill Traces',
+                            killEvents: 'Kill Events',
+                            time: 'Time',
+                            event: 'Event',
+                            victim: 'Victim',
+                            weapon: 'Weapon',
+                            headshot: 'Headshot',
+                            kill: 'KILLED',
+                            death: 'DIED',
+                            yes: 'Yes',
+                            no: 'No',
+                            aimAnalysis: 'Aim Movement Analysis - Kill Events',
+                            totalKillsCount: 'Total Kills',
+                            tracesGenerated: 'Kill Traces Generated',
+                            individualTraces: 'Individual Kill Aim Traces (±30 ticks around each kill)',
+                            killNum: 'Kill #',
+                            noKillEvents: 'No kill events with aim data available',
+                            download: 'Download'
+                        }
+                    };
+                    
+                    const t = texts[this.language];
+                    
                     // 보고서 HTML 생성
                     const reportHTML = `
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>플레이어 보고서 - ${playerName}</title>
+    <title>${t.title} - ${playerName}</title>
     <style>
         body { font-family: Arial, sans-serif; padding: 20px; background: #1a1f2e; color: #fff; }
         .header { border-bottom: 2px solid #4a90e2; padding-bottom: 10px; margin-bottom: 20px; }
@@ -2496,26 +2584,26 @@ Three.js · PapaParse · 순수 JavaScript`;
     </style>
 </head>
 <body>
-    <button id="download-btn" style="position:fixed; top:16px; right:16px; background:#4a90e2; color:#fff; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.3);">다운로드</button>
+    <button id="download-btn" style="position:fixed; top:16px; right:16px; background:#4a90e2; color:#fff; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.3);">${t.download}</button>
     <div class="header">
-        <h1>플레이어 분석 보고서</h1>
+        <h1>${t.title}</h1>
         <h2>${playerName}</h2>
-        <p>생성 시간: ${new Date().toLocaleString('ko-KR')}</p>
+        <p>${t.generated}: ${new Date().toLocaleString(this.language === 'ko' ? 'ko-KR' : 'en-US')}</p>
     </div>
     
     <div class="section">
-        <h3>유저 기본 정보</h3>
+        <h3>${t.userInfo}</h3>
         <div class="stat-grid">
             <div class="stat-item">
-                <div class="stat-label">기기 사용 타입</div>
-                <div class="stat-value">${Math.random() > 0.8 ? '패드' : '키/마'}</div>
+                <div class="stat-label">${t.deviceType}</div>
+                <div class="stat-value">${this.language === 'ko' ? (Math.random() > 0.8 ? '패드' : '키/마') : (Math.random() > 0.8 ? 'Controller' : 'Keyboard/Mouse')}</div>
             </div>
             <div class="stat-item">
-                <div class="stat-label">K/D 비율</div>
+                <div class="stat-label">${t.kdRatio}</div>
                 <div class="stat-value">${stats.deaths > 0 ? (stats.kills / stats.deaths).toFixed(2) : stats.kills.toFixed(2)}</div>
             </div>
             <div class="stat-item">
-                <div class="stat-label">헤드샷 비율</div>
+                <div class="stat-label">${t.headshotRate}</div>
                 <div class="stat-value">${((playerKills.filter(e => e.headshot).length / Math.max(playerKills.length, 1)) * 100).toFixed(1)}%</div>
             </div>
             <div class="stat-item">
@@ -2546,63 +2634,63 @@ Three.js · PapaParse · 순수 JavaScript`;
     </div>
     
     <div class="section">
-        <h3>매치 통계</h3>
+        <h3>${t.matchStats}</h3>
         <div class="stat-grid">
             <div class="stat-item">
-                <div class="stat-label">팀</div>
+                <div class="stat-label">${t.team}</div>
                 <div class="stat-value">${stats.team || 'N/A'}</div>
             </div>
             <div class="stat-item">
-                <div class="stat-label">킬</div>
+                <div class="stat-label">${t.kills}</div>
                 <div class="stat-value">${stats.kills}</div>
             </div>
             <div class="stat-item">
-                <div class="stat-label">데스</div>
+                <div class="stat-label">${t.deaths}</div>
                 <div class="stat-value">${stats.deaths}</div>
             </div>
             <div class="stat-item">
-                <div class="stat-label">총 킬 수</div>
+                <div class="stat-label">${t.totalKills}</div>
                 <div class="stat-value">${playerKills.length}</div>
             </div>
             <div class="stat-item">
-                <div class="stat-label">킬 궤적</div>
+                <div class="stat-label">${t.killTraces}</div>
                 <div class="stat-value">${killTraceImages.length}</div>
             </div>
         </div>
     </div>
     
     <div class="section">
-        <h3>킬 이벤트</h3>
+        <h3>${t.killEvents}</h3>
         <table>
-            <tr><th>시간</th><th>이벤트</th><th>피해자</th><th>무기</th><th>헤드샷</th></tr>
+            <tr><th>${t.time}</th><th>${t.event}</th><th>${t.victim}</th><th>${t.weapon}</th><th>${t.headshot}</th></tr>
             ${playerKills.slice(0, 20).map(e => `
                 <tr>
                     <td>${this.formatTime(e.game_time)}</td>
-                    <td>${e.attacker.name === playerName ? '킬' : '데스'}</td>
+                    <td>${e.attacker.name === playerName ? t.kill : t.death}</td>
                     <td>${e.attacker.name === playerName ? e.victim.name : e.attacker.name}</td>
                     <td>${e.weapon || 'N/A'}</td>
-                    <td>${e.headshot ? '예' : '아니오'}</td>
+                    <td>${e.headshot ? t.yes : t.no}</td>
                 </tr>
             `).join('')}
         </table>
     </div>
     
     <div class="section">
-        <h3>에임 이동 분석 - 킬 이벤트</h3>
-        <p>총 킬 수: ${playerKills.length}</p>
-        <p>생성된 킬 궤적: ${killTraceImages.length}</p>
-                ${killTraceImages.length > 0 ? `
+        <h3>${t.aimAnalysis}</h3>
+        <p>${t.totalKillsCount}: ${playerKills.length}</p>
+        <p>${t.tracesGenerated}: ${killTraceImages.length}</p>
+        ${killTraceImages.length > 0 ? `
             <div style="margin-top: 15px;">
-                <h4>개별 킬 에임 궤적 (각 킬 주변 ±30 틱)</h4>
+                <h4>${t.individualTraces}</h4>
                 ${killTraceImages.map(trace => `
                     <div style="margin-bottom: 30px; padding: 15px; background: #1a1f2e; border-radius: 4px;">
-                        <h5 style="color: #4a90e2; margin-bottom: 10px;">킬 #${trace.killNum} - ${trace.victim} (시간: ${trace.time})</h5>
+                        <h5 style="color: #4a90e2; margin-bottom: 10px;">${t.killNum}${trace.killNum} - ${trace.victim} (${t.time}: ${trace.time})</h5>
                         <img src="${trace.image}" style="max-width: 100%; border: 1px solid #3a3f4e; border-radius: 4px;" />
                     </div>
                 `).join('')}
                 
             </div>
-        ` : '<p>에임 데이터가 있는 킬 이벤트가 없습니다</p>'}
+        ` : `<p>${t.noKillEvents}</p>`}
     </div>
 </body>
 <script>
