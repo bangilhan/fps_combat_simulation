@@ -141,6 +141,14 @@
             color: #8a8fa5;
         }
 
+        #dashboard-content h4 {
+            font-size: 16px;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            color: #6a6f85;
+            font-weight: 600;
+        }
+
         #dashboard-content p, #dashboard-content li {
             line-height: 1.6;
             color: #c0c5d0;
@@ -1282,7 +1290,11 @@ explorer simulation_enhanced.html
                     return `<a href="#${anchor}" style="color: #4a90e2; text-decoration: none; border-bottom: 1px solid #4a90e2;">${text}</a>`;
                 });
                 
-                // 헤더 변환 (ID 포함)
+                // 헤더 변환 (ID 포함) - 순서 중요: h4 -> h3 -> h2 -> h1
+                html = html.replace(/^#### (.*$)/gim, (match, text) => {
+                    const id = createId(text);
+                    return `<h4 id="${id}">${text}</h4>`;
+                });
                 html = html.replace(/^### (.*$)/gim, (match, text) => {
                     const id = createId(text);
                     return `<h3 id="${id}">${text}</h3>`;
@@ -1323,16 +1335,43 @@ explorer simulation_enhanced.html
                 // 줄바꿈
                 html = html.replace(/\n/g, '<br>');
                 
-                // 앵커 링크 클릭 시 부드러운 스크롤
+                // 앵커 링크 클릭 시 Dashboard로 이동하고 부드러운 스크롤
                 setTimeout(() => {
                     document.querySelectorAll('#dashboard-content a[href^="#"]').forEach(link => {
                         link.addEventListener('click', (e) => {
                             e.preventDefault();
-                            const targetId = link.getAttribute('href').substring(1);
-                            const targetElement = document.getElementById(targetId);
-                            if (targetElement) {
-                                targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            
+                            // Dashboard가 열려있지 않으면 Dashboard로 이동
+                            const dashboardView = document.getElementById('dashboard-view');
+                            const container = document.getElementById('container');
+                            if (dashboardView && !dashboardView.classList.contains('active')) {
+                                // Dashboard 탭 활성화
+                                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                                document.querySelectorAll('.nav-item').forEach(n => {
+                                    if (n.textContent.trim() === 'Dashboard') n.classList.add('active');
+                                });
+                                
+                                // Dashboard 뷰 표시
+                                if (container) {
+                                    container.style.display = 'none';
+                                }
+                                dashboardView.classList.add('active');
+                                
+                                // 하단 패널 숨기기
+                                const bottomPanel = document.getElementById('bottom-panel');
+                                if (bottomPanel) {
+                                    bottomPanel.style.display = 'none';
+                                }
                             }
+                            
+                            // 해당 섹션으로 스크롤
+                            const targetId = link.getAttribute('href').substring(1);
+                            setTimeout(() => {
+                                const targetElement = document.getElementById(targetId);
+                                if (targetElement) {
+                                    targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                }
+                            }, dashboardView && !dashboardView.classList.contains('active') ? 200 : 0);
                         });
                     });
                 }, 100);
