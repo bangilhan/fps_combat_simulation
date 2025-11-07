@@ -6,8 +6,16 @@
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "routes": [
-    { "src": "/$", "dest": "/index.html", "headers": { "cache-control": "no-cache" } },
-    { "src": "/index.html", "dest": "/index.html", "headers": { "cache-control": "no-cache" } }
+    { "src": "/$", "dest": "/index.html", "headers": { "cache-control": "no-cache, no-store, must-revalidate" } },
+    { "src": "/index.html", "dest": "/index.html", "headers": { "cache-control": "no-cache, no-store, must-revalidate" } }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
   ]
 }
 
