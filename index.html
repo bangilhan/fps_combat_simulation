@@ -3329,8 +3329,8 @@ Three.js · PapaParse · 순수 JavaScript`;
                         }
                     }
                     
-                    // 라벨 높이 조정 (공격자는 victim과 동일한 높이)
-                    const labelHeight = (isAttacker && attackerWeapon) ? 80 : 96;
+                    // 라벨 높이 조정 (공격자는 한 줄이므로 낮게)
+                    const labelHeight = isAttacker ? 60 : 96;
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     canvas.width = 512;
@@ -3343,31 +3343,22 @@ Three.js · PapaParse · 순수 JavaScript`;
                     ctx.lineWidth = 3;
                     ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
                     
-                    let yPos = 28;
+                    let yPos = 40;
                     
-                    // 공격자인 경우 victim 라벨과 동일한 구조로 변경
+                    // 공격자인 경우 한 줄로 간단하게 표시
                     if (isAttacker) {
-                        // 플레이어 이름을 큰 제목처럼 표시 (victim의 "DEAD" 스타일과 유사)
-                        ctx.fillStyle = '#ffffff';
-                        ctx.font = 'bold 26px Arial';
-                        ctx.textAlign = 'center';
-                        ctx.fillText(player.name, canvas.width / 2, yPos);
-                        
-                        // 무기 정보 표시 (victim의 HEADSHOT 스타일과 동일)
+                        // 캐릭터명(사용무기정보, 공격자 구분) 형식으로 한 줄 표시
+                        let labelText = player.name;
                         if (attackerWeapon) {
-                            yPos += 22;
-                            ctx.fillStyle = '#ffa500';
-                            ctx.font = 'bold 16px Arial';
-                            ctx.textAlign = 'center';
-                            ctx.fillText(attackerWeapon, canvas.width / 2, yPos);
+                            labelText += ` (${attackerWeapon}, attacker)`;
+                        } else {
+                            labelText += ' (attacker)';
                         }
                         
-                        // (attacker) 텍스트 (victim의 "victim" 스타일과 동일)
-                        yPos += 20;
-                        ctx.fillStyle = '#ff6b6b';
-                        ctx.font = '12px Arial';
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = 'bold 28px Arial';
                         ctx.textAlign = 'center';
-                        ctx.fillText('(attacker)', canvas.width / 2, yPos);
+                        ctx.fillText(labelText, canvas.width / 2, yPos);
                     } else {
                         // 일반 플레이어는 기존대로
                         ctx.fillStyle = '#ffffff';
@@ -3385,9 +3376,10 @@ Three.js · PapaParse · 순수 JavaScript`;
                     // 공격자인 경우 라벨을 더 위로 올려서 다른 플레이어와 겹치지 않도록
                     const labelYOffset = isAttacker ? 50 : 35;
                     sprite.position.set(player.position[0], player.position[2] + labelYOffset, player.position[1]);
-                    // 라벨 높이에 맞춰 스케일 조정 (victim과 동일한 크기)
-                    const spriteHeight = (isAttacker && attackerWeapon) ? 40 : 30;
-                    const spriteWidth = isAttacker ? 140 : 150;
+                    // 라벨 높이에 맞춰 스케일 조정 (공격자는 한 줄이므로 낮게)
+                    const spriteHeight = isAttacker ? 30 : 30;
+                    // 공격자 라벨은 텍스트가 길어질 수 있으므로 너비를 넓게
+                    const spriteWidth = isAttacker ? 200 : 150;
                     sprite.scale.set(spriteWidth, spriteHeight, 1);
                     this.scene.add(sprite);
                     this.playerLabels.set(player.name, sprite);
