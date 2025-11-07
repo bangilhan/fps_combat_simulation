@@ -1,20 +1,37 @@
 {
   "version": 2,
-  "cleanUrls": true,
+  "cleanUrls": false,
   "rewrites": [
-    { "source": "/favicon.ico", "destination": "/crumb_logo.png" },
-    { "source": "/", "destination": "/index.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/favicon.ico", "destination": "/crumb_logo.png" }
   ],
   "routes": [
-    { "src": "/$", "dest": "/index.html", "headers": { "cache-control": "no-cache, no-store, must-revalidate" } },
-    { "src": "/index.html", "dest": "/index.html", "headers": { "cache-control": "no-cache, no-store, must-revalidate" } }
+    {
+      "src": "/simulation.html",
+      "dest": "/index.html",
+      "headers": { "cache-control": "no-cache, no-store, must-revalidate" }
+    },
+    {
+      "src": "/simulation_enhanced.html",
+      "dest": "/index.html",
+      "headers": { "cache-control": "no-cache, no-store, must-revalidate" }
+    },
+    {
+      "src": "/$",
+      "dest": "/index.html",
+      "headers": { "cache-control": "no-cache, no-store, must-revalidate" }
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html",
+      "headers": { "cache-control": "no-cache, no-store, must-revalidate" }
+    }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
       ]
     }
   ]

@@ -807,9 +807,29 @@
     </div>
 
     <!-- Dashboard View -->
-    <div id="dashboard-view">
+    <div id="dashboard-view" style="display: block;">
         <div id="dashboard-content"></div>
     </div>
+    
+    <script>
+        // 페이지 로드 시 즉시 Dashboard 표시 보장
+        (function() {
+            const dashboardView = document.getElementById('dashboard-view');
+            const container = document.getElementById('container');
+            const bottomPanel = document.getElementById('bottom-panel');
+            
+            if (dashboardView) {
+                dashboardView.style.display = 'block';
+                dashboardView.classList.remove('hidden');
+            }
+            if (container) {
+                container.style.display = 'none';
+            }
+            if (bottomPanel) {
+                bottomPanel.style.display = 'none';
+            }
+        })();
+    </script>
 
     <!-- GitHub CSV 선택 팝업 -->
     <div id="csv-popup">
@@ -3688,9 +3708,17 @@
             }
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
-            new CombatSimulation();
-        });
+        // 즉시 실행하여 초기화 보장
+        (function() {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => {
+                    new CombatSimulation();
+                });
+            } else {
+                // DOM이 이미 로드된 경우 즉시 실행
+                new CombatSimulation();
+            }
+        })();
     </script>
 </body>
 </html>
