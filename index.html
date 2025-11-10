@@ -107,7 +107,7 @@
 
         #dashboard-view {
             flex: 1;
-            padding: 40px;
+            padding: 20px 40px 40px 40px;
             overflow-y: auto;
             overflow-x: hidden;
             background: #0f1419;
@@ -120,7 +120,7 @@
         }
 
         #dashboard-content {
-            max-width: 900px;
+            max-width: 1400px;
             margin: 0 auto;
             color: #fff;
             padding-right: 20px;
@@ -156,7 +156,7 @@
             font-weight: 600;
         }
 
-        #dashboard-content p, #dashboard-content li {
+        #dashboard-content p {
             line-height: 1.6;
             color: #c0c5d0;
             margin-bottom: 10px;
@@ -170,6 +170,12 @@
         #dashboard-content ul, #dashboard-content ol {
             margin-left: 20px;
             margin-bottom: 15px;
+        }
+
+        #dashboard-content li {
+            line-height: 1.6;
+            color: #c0c5d0;
+            margin-bottom: 2px;
         }
 
         #dashboard-content code {
@@ -1212,11 +1218,16 @@ Three.js · PapaParse · Pure JavaScript`
                     return match;
                 });
                 
+                // 리스트 항목 사이의 줄바꿈 제거 (리스트 내부 <br> 제거)
+                html = html.replace(/<\/li>\s*<br>\s*<li>/gi, '</li><li>');
+                html = html.replace(/<ul>\s*<br>/gi, '<ul>');
+                html = html.replace(/<br>\s*<\/ul>/gi, '</ul>');
+                
                 // 단락
                 html = html.replace(/\n\n/g, '</p><p>');
                 html = '<p>' + html + '</p>';
                 
-                // 줄바꿈
+                // 줄바꿈 (리스트 내부는 이미 처리됨)
                 html = html.replace(/\n/g, '<br>');
                 
                 // 앵커 링크 클릭 시 Dashboard로 이동하고 부드러운 스크롤
