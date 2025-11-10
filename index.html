@@ -679,6 +679,20 @@
                 </div>
             </div>
 
+            <div class="sidebar-section">
+                <h3>Map Image (Optional)</h3>
+                <div id="map-image-input">
+                    <input type="file" id="map-image-file" accept="image/*" style="width: 100%; padding: 8px; margin-bottom: 10px; background: #2a2f3e; color: #fff; border: 1px solid #3a3f4e; border-radius: 4px; cursor: pointer;" />
+                    <div id="map-image-status" style="font-size: 11px; color: #8a8fa5; margin-bottom: 10px;">2D 맵 이미지 업로드 (PNG, JPG)</div>
+                    <div style="display: flex; gap: 5px; align-items: center; margin-bottom: 10px;">
+                        <label style="font-size: 11px; color: #8a8fa5;">투명도:</label>
+                        <input type="range" id="map-image-opacity" min="0" max="100" value="80" style="flex: 1;" />
+                        <span id="map-opacity-value" style="font-size: 11px; color: #8a8fa5; min-width: 35px;">80%</span>
+                    </div>
+                    <button id="remove-map-image-btn" style="width: 100%; padding: 6px; background: #ff6b6b; color: #fff; border: none; border-radius: 4px; cursor: pointer; display: none;">맵 이미지 제거</button>
+                </div>
+            </div>
+
             
 
             <div class="sidebar-section">
@@ -913,6 +927,8 @@
                 this.killLabels = new Map(); // 킬 라벨 추적 (페이드아웃용)
                 this.playerIndex = new Map(); // name -> [{tick, pos}]
                 this.selectedPlayer = null;
+                this.mapImagePlane = null; // 2D 맵 이미지 평면
+                this.mapImageTexture = null; // 맵 이미지 텍스처
                 this.followPlayer = false;
                 
                 this.init();
@@ -967,6 +983,9 @@
                         if (loading) loading.style.display = 'none';
                     }
                 });
+
+                // 맵 이미지 파일 입력 설정
+                this.setupMapImageInput();
 
                 // 팝업 닫기 버튼
                 const closeBtn = document.getElementById('csv-popup-close');
@@ -3395,6 +3414,134 @@ Three.js · PapaParse · Pure JavaScript`
                 console.log(`모든 플레이어 경로 ${this.pathLines.length}개 렌더링 완료`);
             }
             
+            setupMapImageInput() {
+                const mapImageInput = document.getElementById('map-image-file');
+                const mapImageStatus = document.getElementById('map-image-status');
+                const removeBtn = document.getElementById('remove-map-image-btn');
+                const opacitySlider = document.getElementById('map-image-opacity');
+                const opacityValue = document.getElementById('map-opacity-value');
+                
+                if (!mapImageInput) return;
+                
+                // 이미지 파일 선택
+                mapImageInput.addEventListener('change', (e) => {
+                    const file = e.target.files && e.target.files[0];
+                    if (file) {
+                        if (!file.type.startsWith('image/')) {
+                            alert('이미지 파일만 업로드할 수 있습니다.');
+                            return;
+                        }
+                        this.loadMapImage(file);
+                        if (mapImageStatus) {
+                            mapImageStatus.textContent = `로드됨: ${file.name}`;
+                            mapImageStatus.style.color = '#4a90e2';
+                        }
+                        if (removeBtn) removeBtn.style.display = 'block';
+                    }
+                });
+                
+                // 투명도 조절
+                if (opacitySlider && opacityValue) {
+                    opacitySlider.addEventListener('input', (e) => {
+                        const opacity = parseInt(e.target.value) / 100;
+                        opacityValue.textContent = `${e.target.value}%`;
+                        if (this.mapImagePlane && this.mapImagePlane.material) {
+                            this.mapImagePlane.material.opacity = opacity;
+                        }
+                    });
+                }
+                
+                // 맵 이미지 제거
+                if (removeBtn) {
+                    removeBtn.addEventListener('click', () => {
+                        this.removeMapImage();
+                        if (mapImageInput) mapImageInput.value = '';
+                        if (mapImageStatus) {
+                            mapImageStatus.textContent = '2D 맵 이미지 업로드 (PNG, JPG)';
+                            mapImageStatus.style.color = '#8a8fa5';
+                        }
+                        removeBtn.style.display = 'none';
+                        if (opacitySlider) opacitySlider.value = 80;
+                        if (opacityValue) opacityValue.textContent = '80%';
+                    });
+                }
+            }
+            
+            loadMapImage(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        // 텍스처 생성
+                        const texture = new THREE.TextureLoader().load(e.target.result);
+                        texture.wrapS = THREE.RepeatWrapping;
+                        texture.wrapT = THREE.RepeatWrapping;
+                        this.mapImageTexture = texture;
+                        
+                        // 맵 경계가 있으면 바로 렌더링
+                        if (this.mapBounds) {
+                            this.renderMapImage();
+                        }
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            renderMapImage() {
+                if (!this.mapImageTexture || !this.mapBounds) return;
+                
+                // 기존 맵 이미지 제거
+                if (this.mapImagePlane) {
+                    this.scene.remove(this.mapImagePlane);
+                    this.mapImagePlane = null;
+                }
+                
+                const bounds = this.mapBounds;
+                const width = bounds.width;
+                const height = bounds.depth;
+                
+                // 평면 지오메트리 생성 (맵 경계에 맞춤)
+                const planeGeometry = new THREE.PlaneGeometry(width, height);
+                
+                // 투명도 가져오기
+                const opacitySlider = document.getElementById('map-image-opacity');
+                const opacity = opacitySlider ? parseInt(opacitySlider.value) / 100 : 0.8;
+                
+                // 머티리얼 생성
+                const material = new THREE.MeshBasicMaterial({
+                    map: this.mapImageTexture,
+                    transparent: true,
+                    opacity: opacity,
+                    side: THREE.DoubleSide
+                });
+                
+                // 메시 생성
+                this.mapImagePlane = new THREE.Mesh(planeGeometry, material);
+                
+                // 맵 경계 중심에 배치 (Z=0 또는 약간 아래)
+                this.mapImagePlane.position.set(bounds.centerX, bounds.centerZ - 1, bounds.centerY);
+                
+                // 평면을 수평으로 회전 (X축으로 -90도)
+                this.mapImagePlane.rotation.x = -Math.PI / 2;
+                
+                // 씬에 추가 (배경으로 사용되므로 먼저 추가)
+                this.scene.add(this.mapImagePlane);
+                
+                console.log('맵 이미지 렌더링 완료:', width, '×', height);
+            }
+            
+            removeMapImage() {
+                if (this.mapImagePlane) {
+                    this.scene.remove(this.mapImagePlane);
+                    this.mapImagePlane = null;
+                }
+                if (this.mapImageTexture) {
+                    this.mapImageTexture.dispose();
+                    this.mapImageTexture = null;
+                }
+            }
+            
             setupMapBounds() {
                 if (!this.mapBounds) return;
                 
@@ -3412,6 +3559,9 @@ Three.js · PapaParse · Pure JavaScript`
                 );
                 line.position.set(bounds.centerX, bounds.centerZ, bounds.centerY);
                 this.scene.add(line);
+                
+                // 2D 맵 이미지 렌더링 (업로드된 경우)
+                this.renderMapImage();
                 
                 // 맵 지오메트리 렌더링 (감지된 맵이 있으면)
                 if (this.detectedMapName) {
