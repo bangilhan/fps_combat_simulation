@@ -2112,6 +2112,11 @@ Three.js · PapaParse · Pure JavaScript`
                     this.populateKillPicker();
                     this.populatePlayerPicker();
                     
+                    // POC: anubis 맵이면 자동으로 맵 이미지 로드
+                    if (this.detectedMapName && this.detectedMapName.toLowerCase().includes('anubis')) {
+                        this.loadMapImageFromPath('anubis_pro_callouts.png');
+                    }
+                    
                     // 파일 로드 후 3D 시뮬레이션 분석 탭으로 자동 전환
                     this.showInvestigate();
                     
@@ -3486,6 +3491,38 @@ Three.js · PapaParse · Pure JavaScript`
                     img.src = e.target.result;
                 };
                 reader.readAsDataURL(file);
+            }
+            
+            loadMapImageFromPath(imagePath) {
+                // 이미지 경로로 직접 로드 (POC용)
+                const textureLoader = new THREE.TextureLoader();
+                textureLoader.load(
+                    imagePath,
+                    (texture) => {
+                        texture.wrapS = THREE.RepeatWrapping;
+                        texture.wrapT = THREE.RepeatWrapping;
+                        this.mapImageTexture = texture;
+                        
+                        // 맵 경계가 있으면 바로 렌더링
+                        if (this.mapBounds) {
+                            this.renderMapImage();
+                            console.log('맵 이미지 자동 로드 완료:', imagePath);
+                            
+                            // UI 업데이트
+                            const mapImageStatus = document.getElementById('map-image-status');
+                            if (mapImageStatus) {
+                                mapImageStatus.textContent = `자동 로드됨: ${imagePath}`;
+                                mapImageStatus.style.color = '#4a90e2';
+                            }
+                            const removeBtn = document.getElementById('remove-map-image-btn');
+                            if (removeBtn) removeBtn.style.display = 'block';
+                        }
+                    },
+                    undefined,
+                    (error) => {
+                        console.warn('맵 이미지 로드 실패:', imagePath, error);
+                    }
+                );
             }
             
             renderMapImage() {
